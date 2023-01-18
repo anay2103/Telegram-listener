@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+isort = "*"
+flake8 = "==3.9.2"
+
+[packages]
+telethon = "==1.26.0"
+asyncpg = "==0.27.0"
+alembic = "==1.9.1"
+SQLAlchemy = "==1.4.25"
+pre-commit = "==2.21.0"
+python-dotenv = "==0.20.0"
+
+[requires]
+python_version = "3.9"
