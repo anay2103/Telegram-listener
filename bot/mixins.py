@@ -1,9 +1,10 @@
 import logging
 
-import settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from telethon import TelegramClient
+
+import bot.settings as settings
 
 logger = logging.getLogger(__name__)
 

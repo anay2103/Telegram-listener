@@ -1,11 +1,12 @@
 """Фильтры для сообщений Телеграма."""
 from typing import TYPE_CHECKING
 
-from repository import ChannelRepository, UserRepository
 from telethon.events import common as events
 
+from bot.repository import ChannelRepository, UserRepository
+
 if TYPE_CHECKING:
-    import models
+    import bot.models as models
 
 
 async def is_superuser(event: events.EventCommon) -> bool:
