@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -11,10 +12,9 @@ logger = logging.getLogger(__name__)
 
 class PostgresMixin:
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self) -> None:
         self.engine = None
         self.db_session = None
-        super().__init__()
 
     def db_connect(self) -> None:
         try:
@@ -34,3 +34,8 @@ class PostgresMixin:
 
 class Client(TelegramClient, PostgresMixin):
     """Клиент Телеграма с доступом в БД."""
+
+    def __init__(self, bot: Optional['Client'] = None, **kwargs) -> None:
+        """Клиент может иметь атрибутом бот для пересылки сообщений пользователям."""
+        self.bot = bot
+        super().__init__(**kwargs)

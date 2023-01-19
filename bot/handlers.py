@@ -20,7 +20,7 @@ async def chat_listener(event):
     user_ranks = MessageParser(session, event.raw_text).get_ts_rank(users)
     async for user, rank in user_ranks:
         if rank > THRESHOLD:  # пороговое значение взято пока на глаз
-            await event.client.send_message(user.id, f'Для вас сообщение: {event.message.text}')
+            await event.client.bot.send_message(user.id, f'Для вас сообщение: {event.message.text}')
 
 
 @events.register(events.NewMessage(func=filters.is_superuser, pattern=r'add_chat.+'))

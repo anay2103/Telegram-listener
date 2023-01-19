@@ -20,7 +20,7 @@
 ### Запуск
 
 Необходимо заполнить переменные среды из файла `env.example`.
-Создание строковой сессии для реального клиента см. [здесь](https://docs.telethon.dev/en/stable/concepts/sessions.html?highlight=string%20sessions#string-sessions)
+Создание строковой сессии для реального клиента см. [здесь](https://docs.telethon.dev/en/stable/concepts/sessions.html#string-sessions)
 
 Далее стандартно:
 

@@ -2,6 +2,7 @@
 from typing import TYPE_CHECKING
 
 from telethon.events import common as events
+from telethon.tl import types
 
 from bot.repository import ChannelRepository, UserRepository
 
@@ -19,11 +20,18 @@ async def is_superuser(event: events.EventCommon) -> bool:
 
 async def selected_chat(event: events.EventCommon) -> 'models.Channel':
     """
-    Фильтр чата, который есть в БД.
-    Сообщения из этих чатов преверяются на наличие ключевых слов
+    Фильтр чата, который есть в БД. ID чатов ТГ отрицательные, в БД сохраняются положительные.
+    Метод обращается к атрибутам user_id, chat_id, channel_id в зависимости от типа ТГ чата.
+    Сообщения из этих чатов преверяются на наличие ключевых слов.
     """
-    chat_id = abs(event.chat_id)  # id чатов ТГ отрицательные, в БД положительные
+    if isinstance(event.peer_id, types.PeerUser):
+        chat_id = event.peer_id.user_id
+    elif isinstance(event.peer_id, types.PeerChat):
+        chat_id = event.peer_id.chat_id
+    else:
+        chat_id = abs(event.peer_id.channel_id)
+
     session = event.client.db_session()
-    chat = await ChannelRepository(session=session).get(id=chat_id)
+    chat = await ChannelRepository(session=session).get(id=abs(chat_id))
     await session.commit()
     return chat

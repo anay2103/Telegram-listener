@@ -44,5 +44,5 @@ class Keyword(TimeStampModel):
 class Channel(TimeStampModel):
     __tablename__ = 'channels'
 
-    id = sa.Column(sa.Integer, primary_key=True, index=True, unique=True)
+    id = sa.Column(sa.BigInteger, primary_key=True, index=True, unique=True)
     name = sa.Column(sa.String, nullable=False, unique=True)
