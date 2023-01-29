@@ -25,5 +25,3 @@ class MessageParser:
                 ts_query = func.to_tsquery(keyword_str)
                 rank = await self.session.execute(func.ts_rank(func.to_tsvector(self.text), ts_query))
                 yield user, rank.scalar()
-
-        await self.session.commit()
