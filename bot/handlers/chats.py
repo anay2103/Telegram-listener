@@ -1,4 +1,5 @@
 from telethon import Button, events
+from telethon.tl.types import User as TLUser
 
 import bot.filters as filters
 import bot.repository as repository
@@ -9,21 +10,31 @@ BUTTONS = [
     Button.text('Show_keywords', resize=True),
     Button.text('Delete_keywords', resize=True),
 ]
+FWD_TEXT = '**[Переслано из {chat_title}]**(https://t.me/c/{chat_id}/{message_id})\n\n{text}'
 THRESHOLD = 0.02
 
 
 @events.register(events.NewMessage(func=filters.selected_chat))
-async def chat_listener(event):
+async def chat_listener(event: events.NewMessage.Event) -> None:
     session = event.client.db_session()
     users = await repository.UserRepository(session).list()
     user_ranks = MessageParser(session, event.raw_text).get_ts_rank(users)
+
+    chat = await event.get_chat()
+    message = event.message
+    message.text = FWD_TEXT.format(
+        chat_title=chat.username if isinstance(chat, TLUser) else chat.title,
+        chat_id=chat.id,
+        message_id=event.message.id,
+        text=message.text,
+    )
     async for user, rank in user_ranks:
         if rank > THRESHOLD:  # пороговое значение взято пока на глаз
-            await event.client.bot.send_message(user.id, event.message)
+            await event.client.bot.send_message(user.id, message)
 
 
 @events.register(events.NewMessage(func=filters.is_superuser, pattern=r'Add_chat.+'))
-async def add_chat(event) -> None:
+async def add_chat(event: events.NewMessage.Event) -> None:
     """Добавление чата. Доступ только у суперюзера."""
     chat_name = event.raw_text.lstrip('add_chat')
     try:
@@ -37,7 +48,7 @@ async def add_chat(event) -> None:
 
 
 @events.register(events.NewMessage(pattern=r'/?Show_chats'))
-async def show_chat(event) -> None:
+async def show_chat(event: events.NewMessage.Event) -> None:
     """Общий список чатов, по которым осуществляется поиск."""
     session = event.client.db_session()
     chats = await repository.ChannelRepository(session).list()
@@ -45,7 +56,7 @@ async def show_chat(event) -> None:
 
 
 @events.register(events.NewMessage(pattern=r'/?Add_keywords'))
-async def add_keywords(event) -> None:
+async def add_keywords(event: events.NewMessage.Event) -> None:
     """Добавление ключевых слов для поиска."""
     sender = await event.get_sender()
     async with event.client.conversation(sender) as conv:
@@ -62,7 +73,7 @@ async def add_keywords(event) -> None:
 
 
 @events.register(events.NewMessage(pattern=r'/?Show_keywords'))
-async def show_keywords(event):
+async def show_keywords(event: events.NewMessage.Event) -> None:
     """Список ключевых слов для пользователя."""
     sender = await event.get_sender()
     session = event.client.db_session()
@@ -74,7 +85,7 @@ async def show_keywords(event):
 
 
 @events.register(events.NewMessage(pattern=r'.?Delete_keywords'))
-async def delete_keywords(event):
+async def delete_keywords(event: events.NewMessage.Event) -> None:
     sender = await event.get_sender()
     async with event.client.conversation(sender) as conv:
         await conv.send_message('В ответном сообщении введите ключевые слова, которые нужно удалить')

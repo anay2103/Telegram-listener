@@ -29,7 +29,7 @@ async def selected_chat(event: events.EventCommon) -> 'models.Channel':
     elif isinstance(event.peer_id, types.PeerChat):
         chat_id = event.peer_id.chat_id
     else:
-        chat_id = abs(event.peer_id.channel_id)
+        chat_id = event.peer_id.channel_id
 
     session = event.client.db_session()
     chat = await ChannelRepository(session=session).get(id=abs(chat_id))
