@@ -11,11 +11,11 @@ WORKDIR /app
 RUN set -ex &&  apt update && apt upgrade -y && rm -rf /var/lib/apt/lists/*
 
 COPY Pipfile Pipfile.lock /app/
-COPY docker-entrypoint.sh /app/
+COPY ./docker-entrypoint.sh /docker-entrypoint.sh
 
 RUN pip install pipenv
 RUN pipenv install --deploy --system
 
 COPY . /app/
-RUN chmod +x docker-entrypoint.sh
-ENTRYPOINT ["docker-entrypoint.sh"]touch .
+RUN chmod +x /docker-entrypoint.sh
+ENTRYPOINT ["/docker-entrypoint.sh"]
