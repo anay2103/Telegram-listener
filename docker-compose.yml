@@ -12,10 +12,18 @@ services:
         POSTGRES_PASSWORD: postgres
         POSTGRES_DB: bot
 
+    redis:
+      image: redis:5-alpine
+      volumes:
+        - redis-data:/data
+      ports:
+        - 6379:6379
+
     bot:
       build:
         context: .
       env_file: .env
+      restart: always
       volumes:
         - .:/app
       depends_on:
@@ -30,3 +38,4 @@ services:
 
 volumes:
   pgdata:
+  redis-data:

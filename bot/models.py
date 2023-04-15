@@ -1,13 +1,20 @@
+"""Модели БД."""
+from uuid import uuid4
 from datetime import datetime
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql as pg
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import expression, func
+
+from bot import schemas
+
 
 Base = declarative_base()
 
 
 class TimeStampModel(Base):
+    """Абстрактная модель со штампами времени."""
     __abstract__ = True
 
     created_at = sa.Column(sa.DateTime(True), server_default=func.now())
@@ -17,31 +24,29 @@ class TimeStampModel(Base):
         return f'{self.__class__.__name__} id={self.id}'
 
 
-user_keywords = sa.Table(
-    'user_keywords',
-    Base.metadata,
-    sa.Column('user_id', sa.ForeignKey('users.id'), primary_key=True),
-    sa.Column('keyword_id', sa.ForeignKey('keywords.id'), primary_key=True)
-)
-
-
 class User(TimeStampModel):
+    """Модель пользователя."""
     __tablename__ = 'users'
 
     id = sa.Column(sa.BigInteger, primary_key=True, index=True, unique=True)
     is_superuser = sa.Column(sa.Boolean, server_default=expression.false())
-    keywords = relationship('Keyword', secondary=user_keywords, back_populates='user')
+    query = sa.Column(sa.String)
+    keywords = relationship('Keyword', back_populates='user')
 
 
 class Keyword(TimeStampModel):
+    """Модель ключевого слова."""
     __tablename__ = 'keywords'
 
-    id = sa.Column(sa.Integer, primary_key=True, index=True, unique=True)
-    name = sa.Column(sa.String, nullable=False)
-    user = relationship('User', secondary=user_keywords, back_populates='keywords')
+    id = sa.Column(pg.UUID, index=True, unique=True, default=lambda: str(uuid4()))
+    mode = sa.Column(sa.Enum(schemas.KeywordModes), nullable=False, default=schemas.KeywordModes.optional)
+    name = sa.Column(sa.String, primary_key=True)
+    user_id = sa.Column(sa.ForeignKey('users.id'), primary_key=True)
+    user = relationship('User', back_populates='keywords')
 
 
 class Channel(TimeStampModel):
+    """Модель Телеграм-канала."""
     __tablename__ = 'channels'
 
     id = sa.Column(sa.BigInteger, primary_key=True, index=True, unique=True)
