@@ -5,8 +5,8 @@ services:
       image: postgres:12-alpine
       volumes:
         - pgdata:/var/lib/postgresql/data
-      ports:
-        - 5432:5432
+      expose:
+        - 5432
       environment:
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
@@ -16,8 +16,8 @@ services:
       image: redis:5-alpine
       volumes:
         - redis-data:/data
-      ports:
-        - 6379:6379
+      expose:
+        - 6379
 
     bot:
       build:
