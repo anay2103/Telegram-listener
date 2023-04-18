@@ -22,7 +22,7 @@ class UserRepository(Repository):
         async with self.session.begin() as session:
             query = sa.insert(models.User).values(**values)
             user = await session.execute(query)
-        return user
+            return user
 
     async def update(self, id: int, **values) -> None:
         """Обновление пользователя."""
@@ -37,14 +37,14 @@ class UserRepository(Repository):
         async with self.session.begin() as session:
             query = sa.select(models.User).filter_by(id=id)
             res = await session.execute(query)
-        return res.scalar()
+            return res.scalar()
 
     async def list(self) -> List[models.User]:
         """Список пользователей с их ключевыми словами."""
         async with self.session.begin() as session:
             query = sa.select(models.User)
             users = await session.execute(query)
-        return users.scalars().all()
+            return users.scalars().all()
 
     async def apply_query(self, string: str):
         """Список пользователей, запрос которых найден найден в строке текста."""
@@ -105,7 +105,7 @@ class KeywordRepository(Repository):
         async with self.session.begin() as session:
             query = sa.select(models.Keyword).filter_by(user_id=user_id)
             res = await session.execute(query)
-        return res.scalars().all()
+            return res.scalars().all()
 
     async def delete(self, name: str, user_id: int) -> None:
         """Удаление ключевых слов пользователя."""
@@ -129,14 +129,14 @@ class ChannelRepository(Repository):
         async with self.session.begin() as session:
             query = sa.select(models.Channel).filter_by(id=id)
             res = await session.execute(query)
-        return res.scalar()
+            return res.scalar()
 
     async def list(self) -> List[models.Channel]:
         """Список чатов."""
         async with self.session.begin() as session:
             query = sa.select(models.Channel)
             users = await session.execute(query)
-        return users.scalars().all()
+            return users.scalars().all()
 
     async def delete(self, id: int) -> None:
         """Удаление чата."""
