@@ -49,11 +49,11 @@ class UserRepository(Repository):
     async def apply_query(self, string: str):
         """Список пользователей, запрос которых найден найден в строке текста."""
         users = await self.list()
+        tsvector = sa.func.to_tsvector(sa.func.translate(string, "'/'", "' '"))
         async with self.session.begin() as session:
             for user in users:
-                query = sa.text("SELECT to_tsvector(translate(%s, %s, %s)) @@ to_tsquery(%s)" % (
-                    f"'{string}'", "'/'", "' '", user.query
-                ))
+                tsquery = sa.func.to_tsquery(user.query)
+                query = sa.select(tsvector.bool_op('@@')(tsquery))
                 if (await session.execute(query)).scalar():
                     yield user
 
@@ -68,7 +68,7 @@ class UserRepository(Repository):
         """Построение строки запроса из ключевых слов."""
         query = ''
         for kw in keywords:
-            token = f"''{kw.name}''"  # кавычки используются Postgres для поиска фразы
+            token = kw.name if len(kw.name.split()) == 1 else f"'{kw.name}'"
             if kw.mode == schemas.KeywordModes.binding:
                 query = f'{token} & {query}' if query else f'{token}'
             elif kw.mode == schemas.KeywordModes.negative:
@@ -76,11 +76,11 @@ class UserRepository(Repository):
 
         qr_opt = ''
         for kw in keywords:
-            token = f"''{kw.name}''"  # кавычки используются Postgres для поиска фразы
+            token = token = kw.name if len(kw.name.split()) == 1 else f"'{kw.name}'"
             if kw.mode == schemas.KeywordModes.optional:
                 qr_opt = f'{token} & {query} | {qr_opt}' if query else f'{token} | {qr_opt}'
 
-        return f"'{qr_opt.rstrip(' | ')}'" if qr_opt else f"'{query}'"
+        return qr_opt.rstrip(' | ') if qr_opt else query
 
 
 class KeywordRepository(Repository):

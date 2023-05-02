@@ -9,36 +9,35 @@ from bot.crud import UserRepository
     'keywords, expected',
     [
         (
-            [models.Keyword(user_id=1, name='python', mode=schemas.KeywordModes.optional)],
-            "'''python'''"
+            [models.Keyword(user_id=1, name='python', mode=schemas.KeywordModes.optional)], 'python'
         ),
         (
             [
                 models.Keyword(user_id=1, name='python', mode=schemas.KeywordModes.binding),
                 models.Keyword(user_id=1, name='backend', mode=schemas.KeywordModes.optional),
             ],
-            "'''backend'' & ''python'''"
+            'backend & python',
         ),
         (
             [
                 models.Keyword(user_id=1, name='python', mode=schemas.KeywordModes.optional),
                 models.Keyword(user_id=1, name='backend', mode=schemas.KeywordModes.optional),
             ],
-            "'''backend'' | ''python'''"
+            'backend | python',
         ),
         (
             [
                 models.Keyword(user_id=1, name='python', mode=schemas.KeywordModes.binding),
                 models.Keyword(user_id=1, name='backend', mode=schemas.KeywordModes.binding),
             ],
-            "'''backend'' & ''python'''"
+            'backend & python',
         ),
         (
             [
                 models.Keyword(user_id=1, name='python', mode=schemas.KeywordModes.negative),
                 models.Keyword(user_id=1, name='backend', mode=schemas.KeywordModes.negative),
             ],
-            "'!''backend'' & !''python'''"
+            '!backend & !python',
         ),
         (
             [
@@ -46,7 +45,7 @@ from bot.crud import UserRepository
                 models.Keyword(user_id=1, name='junior', mode=schemas.KeywordModes.optional),
                 models.Keyword(user_id=1, name='middle', mode=schemas.KeywordModes.optional),
             ],
-            "'''middle'' & ''python'' | ''junior'' & ''python'''"
+            'middle & python | junior & python',
         ),
         (
             [
@@ -54,7 +53,7 @@ from bot.crud import UserRepository
                 models.Keyword(user_id=1, name='junior', mode=schemas.KeywordModes.negative),
                 models.Keyword(user_id=1, name='middle', mode=schemas.KeywordModes.optional),
             ],
-            "'''middle'' & !''junior'' & ''python'''"
+            'middle & !junior & python',
         ),
         (
             [
@@ -62,7 +61,7 @@ from bot.crud import UserRepository
                 models.Keyword(user_id=1, name='junior', mode=schemas.KeywordModes.binding),
                 models.Keyword(user_id=1, name='middle', mode=schemas.KeywordModes.optional),
             ],
-            "'''middle'' & ''junior'' & ''python'''"
+            'middle & junior & python',
         ),
         (
             [
@@ -70,7 +69,7 @@ from bot.crud import UserRepository
                 models.Keyword(user_id=1, name='junior', mode=schemas.KeywordModes.optional),
                 models.Keyword(user_id=1, name='middle', mode=schemas.KeywordModes.optional),
             ],
-            "'''middle'' | ''junior'' | ''python'''"
+            'middle | junior | python',
         ),
         (
             [
@@ -79,7 +78,7 @@ from bot.crud import UserRepository
                 models.Keyword(user_id=1, name='middle', mode=schemas.KeywordModes.optional),
                 models.Keyword(user_id=1, name='cv', mode=schemas.KeywordModes.negative),
             ],
-            "'''middle'' & !''cv'' & ''python'' | ''junior'' & !''cv'' & ''python'''"
+            'middle & !cv & python | junior & !cv & python',
         ),
         (
             [
@@ -88,7 +87,7 @@ from bot.crud import UserRepository
                 models.Keyword(user_id=1, name='middle', mode=schemas.KeywordModes.optional),
                 models.Keyword(user_id=1, name='cv', mode=schemas.KeywordModes.optional),
             ],
-            "'''cv'' & ''python'' | ''middle'' & ''python'' | ''junior'' & ''python'''"
+            'cv & python | middle & python | junior & python',
         ),
         (
             [
@@ -97,7 +96,7 @@ from bot.crud import UserRepository
                 models.Keyword(user_id=1, name='middle', mode=schemas.KeywordModes.optional),
                 models.Keyword(user_id=1, name='cv', mode=schemas.KeywordModes.optional),
             ],
-            "'''cv'' & ''junior'' & ''python'' | ''middle'' & ''junior'' & ''python'''"
+            'cv & junior & python | middle & junior & python',
         ),
         (
             [
@@ -107,8 +106,7 @@ from bot.crud import UserRepository
                 models.Keyword(user_id=1, name='cv', mode=schemas.KeywordModes.negative),
                 models.Keyword(user_id=1, name='data science', mode=schemas.KeywordModes.negative),
             ],
-            "'''middle'' & !''data science'' & !''cv'' & ''python'' | "
-            "''junior'' & !''data science'' & !''cv'' & ''python'''"
+            "middle & !'data science' & !cv & python | junior & !'data science' & !cv & python",
         )
     ]
 )
