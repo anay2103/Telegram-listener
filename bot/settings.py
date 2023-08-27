@@ -11,6 +11,8 @@ BOT_NAME = os.getenv('BOT_NAME')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 CLIENT_SESSION = os.getenv('CLIENT_SESSION')
+# количество отправляемых ботом сообщений в секунду
+MESSAGE_RATE_LIMIT = 20
 
 
 def build_postgres_uri():

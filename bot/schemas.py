@@ -1,7 +1,7 @@
 """Cхемы."""
 from enum import Enum
 
-from pydantic import BaseModel, ConstrainedStr
+from pydantic import BaseModel, constr
 
 
 class KeywordModes(str, Enum):
@@ -25,16 +25,10 @@ class KeywordModes(str, Enum):
         return self
 
 
-class KeywordName(ConstrainedStr):
-    """Строка ключевого слова."""
-
-    max_length = 256
-
-
 class Keyword(BaseModel):
     """Схема ключевого слова."""
 
-    name: KeywordName
+    name: constr(max_length=256)
     mode: KeywordModes
 
     def __str__(self):

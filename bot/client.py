@@ -1,12 +1,15 @@
 """Клиент Телеграма."""
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Coroutine, Dict, List, Optional
 
 import aioredis
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from aiolimiter import AsyncLimiter
+from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
+                                    create_async_engine)
 from sqlalchemy.orm import sessionmaker
-from telethon import TelegramClient
+from telethon import TelegramClient, hints
+from telethon.tl import types
 
 from bot import settings
 
@@ -26,6 +29,7 @@ class Client(TelegramClient):
         self.redis: Optional[aioredis.Redis] = None
         self.engine: Optional[AsyncEngine] = None
         self.db_session: Optional[sessionmaker[AsyncSession]] = None
+        self.limiter = AsyncLimiter(settings.MESSAGE_RATE_LIMIT)
         super().__init__(**kwargs)
 
     def db_connect(self) -> None:
@@ -49,7 +53,7 @@ class Client(TelegramClient):
         """Подключение к Redis."""
         uri = settings.build_redis_uri()
         try:
-            redis = aioredis.from_url(uri, encoding="utf-8", decode_responses=True)
+            redis = aioredis.from_url(uri, encoding='utf-8', decode_responses=True)
         except Exception as error:
             logger.error(error, exc_info=True)
             raise
@@ -69,3 +73,13 @@ class Client(TelegramClient):
             self.redis_connect()
         value = await self.redis.get(key)  # type: ignore
         return json.loads(value)
+
+    async def send_message(
+        self,
+        entity: hints.EntityLike,
+        message: types.Message,
+        **kwargs: Any,
+    ) -> Coroutine[Any, Any, types.Message]:
+        """Отправка сообщений с учетом ограничений Телеграма."""
+        async with self.limiter:
+            return await super().send_message(entity, message, **kwargs)

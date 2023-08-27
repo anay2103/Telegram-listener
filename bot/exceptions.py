@@ -1,14 +1,19 @@
 """Обработчик исключений."""
+import asyncio
 import functools
+import logging
 from asyncio.exceptions import TimeoutError
 from typing import Any, Callable
 
 from asyncpg.exceptions import UniqueViolationError
+from pydantic import ValidationError
+from telethon.errors import FloodWaitError
 from telethon.events import common
-from pydantic.error_wrappers import ValidationError
+
+logger = logging.getLogger(__name__)
 
 
-def bot_exceptions(func: Callable) -> Callable:
+def exception_handler(func: Callable) -> Callable:
     """Декоратор для хэндлеров сообщений, обрабатывающий исключения."""
     @functools.wraps(func)
     async def wrapper(event: common.EventCommon) -> Any:
@@ -25,6 +30,9 @@ def bot_exceptions(func: Callable) -> Callable:
         except UniqueViolationError:
             await event.client.set_state(sender.id, None)   # сбрасываем state пользователя
             await event.respond(f'Такое слово уже добавлено: {event.message.data}')
+        except FloodWaitError as err:
+            logger.error(f'Sleeping for {err.seconds} on flood wait')
+            await asyncio.sleep(err.seconds)
         except Exception:
             await event.client.set_state(sender.id, None)   # сбрасываем state пользователя
             await event.respond('Упс...Кажется у нас авария. Все починим!')

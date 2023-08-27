@@ -5,12 +5,13 @@ from telethon import Button, events
 from telethon.tl.types import User as TLUser
 
 from bot import crud, filters, schemas
-from bot.exceptions import bot_exceptions
+from bot.exceptions import exception_handler
 from bot.handlers.base import Commands
 
 FWD_TEXT = '**[Переслано из {chat_title}]**(https://t.me/c/{chat_id}/{message_id})\n\n{text}'
 
 
+@exception_handler
 @events.register(events.NewMessage(func=filters.selected_chat))
 async def chat_listener(event: events.NewMessage.Event) -> None:
     """Основной хэндлер, который слушает чаты.
@@ -34,7 +35,7 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
         await event.client.bot.send_message(user.id, message)
 
 
-@bot_exceptions
+@exception_handler
 @events.register(events.NewMessage(func=filters.is_superuser, pattern=Commands.add_chat))
 async def add_chat(event: events.NewMessage.Event) -> None:
     """Добавление чата. Доступ только у суперюзера."""
@@ -52,19 +53,21 @@ async def add_chat(event: events.NewMessage.Event) -> None:
             await event.respond(f'Добавлен чат для поиска: {chat}')
 
 
-@bot_exceptions
+@exception_handler
 @events.register(events.NewMessage(pattern=Commands.show_chats))
 async def show_chats(event: events.NewMessage.Event) -> None:
     """Общий список чатов, по которым осуществляется поиск."""
     session = event.client.db_session
     chats = await crud.ChannelRepository(session).list()
-    await event.respond(
-        '\n'.join([f't.me/{chat.name}' for chat in chats]),
-        link_preview=False,
-    )
+    if chats:
+        return await event.respond(
+            '\n'.join([f't.me/{chat.name}' for chat in chats]),
+            link_preview=False,
+        )
+    await event.respond('Пока не добавлено ни одного чата')
 
 
-@bot_exceptions
+@exception_handler
 @events.register(events.NewMessage(pattern=Commands.add_keyword))
 async def add_keywords(event: events.NewMessage.Event) -> None:
     """Добавление ключевых слов для поиска."""
@@ -89,7 +92,7 @@ async def add_keywords(event: events.NewMessage.Event) -> None:
         )
 
 
-@bot_exceptions
+@exception_handler
 @events.register(events.CallbackQuery(func=filters.is_adding))
 async def adding_callback(event: events.CallbackQuery.Event) -> None:
     """Коллбэк для добавления пользователем ключевого слова."""
@@ -103,7 +106,7 @@ async def adding_callback(event: events.CallbackQuery.Event) -> None:
     )
 
 
-@bot_exceptions
+@exception_handler
 @events.register(events.NewMessage(pattern=Commands.start_search))
 async def start_search(event: events.NewMessage.Event) -> None:
     """Запуск поиска по ключевым словам."""
@@ -115,40 +118,49 @@ async def start_search(event: events.NewMessage.Event) -> None:
     await event.client.send_message(sender, 'Слова отредактированы! Начинаем поиск.', buttons=Button.clear())
 
 
-@bot_exceptions
+@exception_handler
 @events.register(events.NewMessage(pattern=Commands.show_keywords))
 async def show_keywords(event: events.NewMessage.Event) -> None:
     """Список ключевых слов пользователя."""
     sender = await event.get_sender()
     session = event.client.db_session
     keywords = await crud.KeywordRepository(session).get(sender.id)
-    await event.respond(''.join([f'{kwd.name.upper()} - {kwd.mode}\n' for kwd in keywords]))
+    if keywords:
+        return await event.respond(''.join([f'{kwd.name.upper()} - {kwd.mode}\n' for kwd in keywords]))
+    await event.respond('Пока не добавлено ни одного ключевого слова')
 
 
-@bot_exceptions
+@exception_handler
 @events.register(events.NewMessage(pattern=Commands.delete_keywords))
 async def delete_keywords(event: events.NewMessage.Event) -> None:
     """Удаление ключевых слов пользователя."""
     sender = await event.get_sender()
     session = event.client.db_session
-    await event.client.set_state(sender.id, filters.State.deleting)
     keywords = await crud.KeywordRepository(session).get(sender.id)
     buttons = [
-        [Button.inline(f'{kwd.name}', data=schemas.KeywordName(kwd.name))]
+        [
+            Button.inline(
+                f'{kwd.name} - {kwd.mode}\n',
+                data=schemas.Keyword(name=kwd.name, mode=kwd.mode).json()
+            )
+        ]
         for kwd in keywords
     ]
-    await event.respond('Выберите слова для удаления', buttons=buttons)
+    if buttons:
+        await event.client.set_state(sender.id, filters.State.deleting)
+        return await event.respond('Выберите слова для удаления', buttons=buttons)
+    await event.respond('Пока не добавлено ни одного ключевого слова')
 
 
-@bot_exceptions
+@exception_handler
 @events.register(events.CallbackQuery(func=filters.is_deleting))
 async def deleting_callback(event: events.CallbackQuery.Event) -> None:
     """Коллбэк для удаления пользователем ключевого слова."""
-    kwd = schemas.KeywordName(event.data.decode())
+    kwd = schemas.Keyword(**json.loads(event.data.decode()))
     sender = await event.get_sender()
     session = event.client.db_session
-    await crud.KeywordRepository(session).delete(name=kwd, user_id=sender.id)
+    await crud.KeywordRepository(session).delete(name=kwd.name, user_id=sender.id)
     await event.respond(
-        f'Удалены ключевые слова: {kwd.upper()}',
+        f'Удалены ключевые слова: {kwd.name.upper()}',
         buttons=[Button.text(Commands.start_search, resize=True, single_use=True)]
     )
