@@ -1,4 +1,7 @@
 """Main."""
+import logging
+from logging import config
+
 from telethon.sessions import StringSession
 
 from bot import handlers, settings
@@ -20,6 +23,8 @@ client = Client(
 
 def main():
     """Запуск бота и реального клиента. Бот общается с пользователями, клиент слушает чаты."""
+
+    config.fileConfig('logging.conf')
     with client:
         client.db_connect()
         client.add_event_handler(handlers.chats.chat_listener)
@@ -28,7 +33,7 @@ def main():
         client.bot.db_connect()
         client.bot.redis_connect()
         client.bot.start(bot_token=settings.BOT_TOKEN)
-
+        logging.info('Bot successfully started')
         client.loop.run_forever()
 
 
