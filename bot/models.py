@@ -4,7 +4,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql as pg
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import expression, func
 
 from bot import schemas
@@ -30,10 +30,13 @@ class User(TimeStampModel):
 
     id = sa.Column(sa.BigInteger, primary_key=True, index=True, unique=True)
     is_superuser = sa.Column(sa.Boolean, server_default=expression.false())
+    no_grade_ok = sa.Column(sa.Boolean, server_default=expression.false())
+    grade = sa.Column(sa.String)
+    # TODO: выпилить
     query = sa.Column(sa.String)
-    keywords = relationship('Keyword', back_populates='user')
 
 
+# TODO: выпилить
 class Keyword(TimeStampModel):
     """Модель ключевого слова."""
     __tablename__ = 'keywords'
@@ -42,7 +45,6 @@ class Keyword(TimeStampModel):
     mode = sa.Column(sa.Enum(schemas.KeywordModes), nullable=False, default=schemas.KeywordModes.optional)
     name = sa.Column(sa.String, primary_key=True)
     user_id = sa.Column(sa.ForeignKey('users.id'), primary_key=True)
-    user = relationship('User', back_populates='keywords')
 
 
 class Channel(TimeStampModel):

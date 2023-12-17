@@ -1,5 +1,5 @@
 """Хэндлеры команд бота."""
-import json
+import logging
 
 from telethon import Button, events
 from telethon.tl.types import User as TLUser
@@ -11,7 +11,6 @@ from bot.handlers.base import Commands
 FWD_TEXT = '**[Переслано из {chat_title}]**(https://t.me/c/{chat_id}/{message_id})\n\n{text}'
 
 
-@exception_handler
 @events.register(events.NewMessage(func=filters.selected_chat))
 async def chat_listener(event: events.NewMessage.Event) -> None:
     """Основной хэндлер, который слушает чаты.
@@ -20,8 +19,7 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
     """
     chat = await event.get_chat()
     message = event.message
-    session = event.client.db_session
-    users = crud.UserRepository(session).apply_query(message.text)
+    await event.client.process(message.text)
     message.text = FWD_TEXT.format(
         chat_title=chat.username if isinstance(chat, TLUser) else chat.title,
         chat_id=chat.id,
@@ -31,8 +29,14 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
     # удаляем медиафайлы так как иначе получаем MediaCaptionTooLongError
     # TODO: возможно есть способы обхода
     message.media = None
-    async for user in users:
+    recipients = event.client.recipients
+    if recipients:
+        logging.info('Got message %s for sending', message.text)
+    else:
+        logging.info('Got message %s, skipping', message.text)
+    for user in event.client.recipients:
         await event.client.bot.send_message(user.id, message)
+        logging.info('Sended  to recipient %s', user.id)
 
 
 @exception_handler
@@ -40,25 +44,59 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
 async def add_chat(event: events.NewMessage.Event) -> None:
     """Добавление чата. Доступ только у суперюзера."""
     sender = await event.get_sender()
-    async with event.client.conversation(sender) as conv:
-        await conv.send_message('В ответном сообщении введите название Телеграм-чата')
-        chat = (await conv.get_response()).text
-        try:
-            chat_entity = await event.client.get_input_entity(chat)
-        except ValueError:
-            await event.respond(f'Чат не найден, проверьте название: {chat}')
-        else:
-            session = event.client.db_session
-            await crud.ChannelRepository(session).add(id=chat_entity.channel_id, name=chat)
-            await event.respond(f'Добавлен чат для поиска: {chat}')
+    await event.respond('В ответном сообщении введите название Телеграм-чата')
+    await event.client.set_state(sender.id, filters.ChannelAdminState.adding_channel)
+    event.message = None
+
+
+@exception_handler
+@events.register(events.NewMessage(func=filters.adding_channel))
+async def adding_chat_callback(event: events.NewMessage.Event) -> None:
+    """Коллбэк для добавления чата."""
+    chat_name = event.message.text
+    try:
+        chat_entity = await event.client.get_input_entity(chat_name)
+    except ValueError:
+        await event.respond(f'Чат не найден, проверьте название: {chat_name}')
+    else:
+        await event.client.channel_repository.add(id=chat_entity.channel_id, name=chat_name)
+        await event.respond(f'Добавлен чат для поиска: {chat_name}')
+
+    sender = await event.get_sender()
+    await event.client.set_state(sender.id, None)
+
+
+@exception_handler
+@events.register(events.NewMessage(func=filters.is_superuser, pattern=Commands.delete_chat))
+async def delete_chat(event: events.NewMessage.Event) -> None:
+    """Удаление чата. Доступ только у суперюзера."""
+    sender = await event.get_sender()
+    chats = await event.client.channel_repository.list()
+    await event.client.set_state(sender.id, filters.ChannelAdminState.deleting_channel)
+    await event.respond(
+        'Выберите чат, который хотите удалить: ',
+        buttons=[
+            [Button.inline(f't.me/{chat.name}', data=chat.id)] for chat in chats
+        ]
+    )
+
+
+@exception_handler
+@events.register(events.CallbackQuery(func=filters.deleting_channel))
+async def deleting_chat_callback(event: events.CallbackQuery.Event) -> None:
+    """Коллбэк для удаления чата."""
+    chat_id = int(event.data.decode())
+    await event.client.channel_repository.delete(id=chat_id)
+    sender = await event.get_sender()
+    await event.client.set_state(sender.id, None)
+    await event.respond('Чат успешно удален')
 
 
 @exception_handler
 @events.register(events.NewMessage(pattern=Commands.show_chats))
 async def show_chats(event: events.NewMessage.Event) -> None:
     """Общий список чатов, по которым осуществляется поиск."""
-    session = event.client.db_session
-    chats = await crud.ChannelRepository(session).list()
+    chats = await event.client.channel_repository.list()
     if chats:
         return await event.respond(
             '\n'.join([f't.me/{chat.name}' for chat in chats]),
@@ -68,99 +106,57 @@ async def show_chats(event: events.NewMessage.Event) -> None:
 
 
 @exception_handler
-@events.register(events.NewMessage(pattern=Commands.add_keyword))
-async def add_keywords(event: events.NewMessage.Event) -> None:
-    """Добавление ключевых слов для поиска."""
+@events.register(events.NewMessage(pattern=Commands.add_grade))
+async def add_grade(event: events.NewMessage.Event) -> None:
+    """Добавление грейда для поиска."""
     sender = await event.get_sender()
-    async with event.client.conversation(sender) as conv:
-        await conv.send_message('В ответном сообщении введите слово или слово словосочетание для поиска')
-        await event.client.set_state(sender.id, filters.State.adding)
-        word = (await conv.get_response()).text
-        await conv.send_message(
-            f'Введите тип для ключевого слова: {word.upper()}',
-            buttons=[
-                Button.inline(
-                    'обязательно', data=schemas.Keyword(name=word, mode=schemas.KeywordModes.binding).json()
-                    ),
-                Button.inline(
-                    'опционально', data=schemas.Keyword(name=word, mode=schemas.KeywordModes.optional).json()
-                    ),
-                Button.inline(
-                    'исключить', data=schemas.Keyword(name=word, mode=schemas.KeywordModes.negative).json()
-                    ),
-            ],
-        )
-
-
-@exception_handler
-@events.register(events.CallbackQuery(func=filters.is_adding))
-async def adding_callback(event: events.CallbackQuery.Event) -> None:
-    """Коллбэк для добавления пользователем ключевого слова."""
-    kwd = schemas.Keyword(**json.loads(event.data.decode()))
-    sender = await event.get_sender()
-    session = event.client.db_session
-    await crud.KeywordRepository(session).add(kwd.name, kwd.mode, sender.id)
+    await event.client.set_state(sender.id, filters.ChoosingGradeState.сhoosing_grade)
     await event.respond(
-        f'Добавлено ключевое слово: {kwd.name}',
-        buttons=[Button.text('Начать поиск', resize=True, single_use=True)]
+        'Выберите грейд: ',
+        buttons=[
+            [Button.inline('Junior', data=schemas.Grades.JUNIOR.name)],
+            [Button.inline('Middle', data=schemas.Grades.MIDDLE.name)],
+            [Button.inline('Senior', data=schemas.Grades.SENIOR.name)],
+        ],
     )
 
 
 @exception_handler
-@events.register(events.NewMessage(pattern=Commands.start_search))
-async def start_search(event: events.NewMessage.Event) -> None:
-    """Запуск поиска по ключевым словам."""
+@events.register(events.CallbackQuery(func=filters.choosing_grade))
+async def choosing_grade(event: events.CallbackQuery.Event) -> None:
+    """Коллбэк для выбора грейда."""
+    grade = event.data.decode()
+    if grade not in schemas.Grades.choices():
+        raise ValueError('Недопустимое значение грейда')
     sender = await event.get_sender()
-    session = event.client.db_session
-    await crud.UserRepository(session).make_query(sender.id)
+    await event.client.user_repository.update(id=sender.id, grade=grade)
+    await event.client.set_state(sender.id, filters.ChoosingGradeState.choosing_no_grade_ok)
+    await event.respond(
+        'Присылать вакансии без указания грейда?',
+        buttons=[
+            [Button.inline('Да', data=True)],
+            [Button.inline('Нет', data=False)],
+        ],
+    )
+    event.query = None
 
+
+@exception_handler
+@events.register(events.CallbackQuery(func=filters.сhoosing_no_grade_ok))
+async def choosing_no_grade_ok(event: events.CallbackQuery.Event) -> None:
+    """Коллбэк для выбора подписки на вакансии без указания грейда."""
+    no_grade_ok = event.data.decode()
+    sender = await event.get_sender()
+    await event.client.user_repository.update(id=sender.id, no_grade_ok=bool(no_grade_ok))
     await event.client.set_state(sender.id, None)
-    await event.client.send_message(sender, 'Слова отредактированы! Начинаем поиск.', buttons=Button.clear())
+    await event.respond('Готово! Начинаем поиск.', buttons=Button.clear())
 
 
 @exception_handler
-@events.register(events.NewMessage(pattern=Commands.show_keywords))
-async def show_keywords(event: events.NewMessage.Event) -> None:
-    """Список ключевых слов пользователя."""
+@events.register(events.NewMessage(pattern=Commands.show_grade))
+async def show_grade(event: events.NewMessage.Event) -> None:
+    """Настройки пользователя."""
     sender = await event.get_sender()
     session = event.client.db_session
-    keywords = await crud.KeywordRepository(session).get(sender.id)
-    if keywords:
-        return await event.respond(''.join([f'{kwd.name.upper()} - {kwd.mode}\n' for kwd in keywords]))
-    await event.respond('Пока не добавлено ни одного ключевого слова')
-
-
-@exception_handler
-@events.register(events.NewMessage(pattern=Commands.delete_keywords))
-async def delete_keywords(event: events.NewMessage.Event) -> None:
-    """Удаление ключевых слов пользователя."""
-    sender = await event.get_sender()
-    session = event.client.db_session
-    keywords = await crud.KeywordRepository(session).get(sender.id)
-    buttons = [
-        [
-            Button.inline(
-                f'{kwd.name} - {kwd.mode}\n',
-                data=schemas.Keyword(name=kwd.name, mode=kwd.mode).json()
-            )
-        ]
-        for kwd in keywords
-    ]
-    if buttons:
-        await event.client.set_state(sender.id, filters.State.deleting)
-        return await event.respond('Выберите слова для удаления', buttons=buttons)
-    await event.respond('Пока не добавлено ни одного ключевого слова')
-
-
-@exception_handler
-@events.register(events.CallbackQuery(func=filters.is_deleting))
-async def deleting_callback(event: events.CallbackQuery.Event) -> None:
-    """Коллбэк для удаления пользователем ключевого слова."""
-    kwd = schemas.Keyword(**json.loads(event.data.decode()))
-    sender = await event.get_sender()
-    session = event.client.db_session
-    await crud.KeywordRepository(session).delete(name=kwd.name, user_id=sender.id)
-    await event.respond(
-        f'Удалены ключевые слова: {kwd.name.upper()}',
-        buttons=[Button.text(Commands.start_search, resize=True, single_use=True)]
-    )
+    user = await crud.UserRepository(session).get(sender.id)
+    return await event.respond(user.grade)

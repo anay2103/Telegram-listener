@@ -9,12 +9,10 @@ class Commands(str, Enum):
     start = '/start'
     help = '/help'
     add_chat = '/add_chat'
+    delete_chat = '/delete_chat'
     show_chats = '/show_chats'
-    add_keyword = '/add_keyword'
-    show_keywords = '/show_keywords'
-    delete_keywords = '/delete_keyword'
-    # инлайн-команды
-    start_search = 'Начать поиск'
+    add_grade = '/add_grade'
+    show_grade = '/show_grade'
 
 
 @events.register(events.NewMessage(pattern=Commands.start))
@@ -35,7 +33,6 @@ async def help(event):
         f'{Commands.start} - Start me! \n'
         f'{Commands.help} - Справка \n'
         f'{Commands.show_chats} - Список чатов для поиска \n'
-        f'{Commands.add_keyword} - Добавить слова для поиского запроса в чатах \n'
-        f'{Commands.delete_keywords} - Удалить слова из поискового запроса в чатах \n'
-        f'{Commands.show_keywords} - Показать слова поискового запроса'
+        f'{Commands.add_grade} - Добавить грейд вакансии для поиска \n'
+        f'{Commands.show_grade} - Показать мой текущий грейд для поиска'
     )

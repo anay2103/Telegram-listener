@@ -1,7 +1,7 @@
 """Клиент Телеграма."""
 import json
 import logging
-from typing import Any, Coroutine, Dict, List, Optional
+from typing import Any, Coroutine, List, Optional
 
 import aioredis
 from aiolimiter import AsyncLimiter
@@ -12,11 +12,11 @@ from telethon import TelegramClient, hints
 from telethon.tl import types
 
 from bot import settings
+from bot.crud import ChannelRepository, UserRepository
+from bot.parser import Parser
 
-logger = logging.getLogger(__name__)
 
-
-class Client(TelegramClient):
+class Client(Parser, TelegramClient):
     """Клиент Телеграма с доступом в БД и кэш Redis."""
 
     def __init__(
@@ -26,9 +26,12 @@ class Client(TelegramClient):
     ) -> None:
         """Клиент может иметь атрибутом бот для пересылки сообщений пользователям."""
         self.bot = bot
+        self.recipients = set()
         self.redis: Optional[aioredis.Redis] = None
         self.engine: Optional[AsyncEngine] = None
-        self.db_session: Optional[sessionmaker[AsyncSession]] = None
+        self.db_session: sessionmaker
+        self.user_repository: UserRepository
+        self.channel_repository: ChannelRepository
         self.limiter = AsyncLimiter(settings.MESSAGE_RATE_LIMIT)
         super().__init__(**kwargs)
 
@@ -38,16 +41,18 @@ class Client(TelegramClient):
         try:
             engine = create_async_engine(uri, echo=True)
         except Exception as error:
-            logger.error(error, exc_info=True)
+            logging.error(error, exc_info=True)
             raise
         self.engine = engine
 
         try:
             session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         except Exception as error:
-            logger.error(error, exc_info=True)
+            logging.error(error, exc_info=True)
             raise
         self.db_session = session
+        self.user_repository = UserRepository(self.db_session)
+        self.channel_repository = ChannelRepository(self.db_session)
 
     def redis_connect(self) -> None:
         """Подключение к Redis."""
@@ -55,24 +60,32 @@ class Client(TelegramClient):
         try:
             redis = aioredis.from_url(uri, encoding='utf-8', decode_responses=True)
         except Exception as error:
-            logger.error(error, exc_info=True)
+            logging.error(error, exc_info=True)
             raise
         self.redis = redis
 
-    async def set_state(self, key: str, value: Any) -> None:
+    async def set_state(self, key: str, value: Optional[str] = None) -> None:
         """Добавление пары ключ-значение в Redis."""
         if not self.redis:
             self.redis_connect()
         if isinstance(value, List):
             value = dict.fromkeys(value)
-        await self.redis.set(key, json.dumps(value))  # type: ignore
+        try:
+            await self.redis.set(key, json.dumps(value))  # type: ignore
+        except Exception as error:
+            logging.error(error, exc_info=True)
+            return
 
-    async def get_state(self, key: str) -> Dict[str, Any]:
+    async def get_state(self, key: str) -> Any:
         """Получение значения по ключу в Redis."""
         if not self.redis:
             self.redis_connect()
         value = await self.redis.get(key)  # type: ignore
-        return json.loads(value)
+        try:
+            return json.loads(value)
+        except Exception as error:
+            logging.error(error, exc_info=True)
+            return
 
     async def send_message(
         self,

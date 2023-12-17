@@ -5,36 +5,56 @@ from typing import TYPE_CHECKING
 from telethon.events import common as events
 from telethon.tl import types
 
-from bot.crud import ChannelRepository, UserRepository
+from bot.crud import ChannelRepository
 
 if TYPE_CHECKING:
     import bot.models as models
 
 
-class State(str, Enum):
+class ChoosingGradeState(str, Enum):
     """Статусы пользователя."""
 
-    adding = 'adding keywords'
-    deleting = 'deleting keywords'
+    сhoosing_grade = 'choosing grade'
+    choosing_no_grade_ok = 'choosing no grade ok'
+
+
+class ChannelAdminState(str, Enum):
+    """Статусы админа при работе с чатами."""
+
+    adding_channel = 'adding_channel'
+    deleting_channel = 'deleting_channel'
 
 
 async def is_superuser(event: events.EventCommon) -> bool:
     """Фильтр по суперюзеру."""
-    session = event.client.db_session
-    user = await UserRepository(session=session).get(id=event.sender.id)
+    user = await event.client.user_repository.get(id=event.sender.id)
     return bool(user.is_superuser)
 
 
-async def is_adding(event: events.EventCommon) -> bool:
-    """Фильтр пользователей, которые находятся в статусе добавления слов."""
+async def choosing_grade(event: events.EventCommon) -> bool:
+    """Фильтр пользователей, которые находятся в статусе выбора грейда."""
     state = await event.client.get_state(event.sender.id)
-    return state == State.adding
+    return state == ChoosingGradeState.сhoosing_grade
 
 
-async def is_deleting(event: events.EventCommon) -> bool:
-    """Фильтр пользователей, которые находятся в статусе удаления слов."""
+async def сhoosing_no_grade_ok(event: events.EventCommon) -> bool:
+    """Фильтр пользователей, которые находятся в статусе выбора
+
+    подписки на вакансии без указания грейда."""
     state = await event.client.get_state(event.sender.id)
-    return state == State.deleting
+    return state == ChoosingGradeState.choosing_no_grade_ok and event.query is not None
+
+
+async def adding_channel(event: events.EventCommon) -> bool:
+    """Фильтр админа, который находится в статусе добавления чата."""
+    state = await event.client.get_state(event.sender.id)
+    return state == ChannelAdminState.adding_channel
+
+
+async def deleting_channel(event: events.EventCommon) -> bool:
+    """Фильтр админа, который находится в статусе удаления чата."""
+    state = await event.client.get_state(event.sender.id)
+    return state == ChannelAdminState.deleting_channel
 
 
 async def selected_chat(event: events.EventCommon) -> 'models.Channel':

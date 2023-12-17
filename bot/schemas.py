@@ -1,8 +1,6 @@
 """Cхемы."""
 from enum import Enum
 
-from pydantic import BaseModel, constr
-
 
 class KeywordModes(str, Enum):
     """Режим ключевого слова  для создания Full-text search запроса:
@@ -25,11 +23,14 @@ class KeywordModes(str, Enum):
         return self
 
 
-class Keyword(BaseModel):
-    """Схема ключевого слова."""
+class Grades (str, Enum):
+    """Грейды вакансий."""
 
-    name: constr(max_length=256)
-    mode: KeywordModes
+    JUNIOR = 'junior'
+    MIDDLE = 'middle'
+    SENIOR = 'senior'
+    LEAD = 'techlead'
 
-    def __str__(self):
-        return f'{self.name}: {self.mode}'
+    @classmethod
+    def choices(cls):
+        return [item.name for item in cls]

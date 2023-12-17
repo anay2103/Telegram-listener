@@ -1,10 +1,9 @@
 """Операции в БД."""
-from typing import Any, List, Optional
+from typing import Any, List
 
 import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
-
-from bot import models, schemas
+from bot import models
 
 
 class Repository:
@@ -26,6 +25,10 @@ class UserRepository(Repository):
 
     async def update(self, id: int, **values) -> None:
         """Обновление пользователя."""
+        user = await self.get(id=id)
+        if not user:
+            user = await self.add(id=id, **values)
+            return
         async with self.session.begin() as session:
             query = sa.update(models.User)
             query = query.filter_by(id=id)
@@ -39,80 +42,13 @@ class UserRepository(Repository):
             res = await session.execute(query)
             return res.scalar()
 
-    async def list(self) -> List[models.User]:
-        """Список пользователей с их ключевыми словами."""
+    async def list(self, **values) -> List[models.User]:
+        """Список пользователей."""
         async with self.session.begin() as session:
             query = sa.select(models.User)
+            query = query.filter_by(**values)
             users = await session.execute(query)
             return users.scalars().all()
-
-    async def apply_query(self, string: str):
-        """Список пользователей, запрос которых найден найден в строке текста."""
-        users = await self.list()
-        tsvector = sa.func.to_tsvector(sa.func.translate(string, "'/'", "' '"))
-        async with self.session.begin() as session:
-            for user in users:
-                tsquery = sa.func.to_tsquery(user.query)
-                query = sa.select(tsvector.bool_op('@@')(tsquery))
-                if (await session.execute(query)).scalar():
-                    yield user
-
-    async def make_query(self, user_id: int) -> None:
-        """Построение строки запроса пользователя и обновление."""
-        keywords = await KeywordRepository(self.session).get(user_id)
-        query = await self._make_query(keywords)
-        await UserRepository(self.session).update(user_id, query=query)
-
-    @staticmethod
-    async def _make_query(keywords: List[models.Keyword]) -> str:
-        """Построение строки запроса из ключевых слов."""
-        query = ''
-        for kw in keywords:
-            token = kw.name if len(kw.name.split()) == 1 else f"'{kw.name}'"
-            if kw.mode == schemas.KeywordModes.binding:
-                query = f'{token} & {query}' if query else f'{token}'
-            elif kw.mode == schemas.KeywordModes.negative:
-                query = f'!{token} & {query}' if query else f'!{token}'
-
-        qr_opt = ''
-        for kw in keywords:
-            token = token = kw.name if len(kw.name.split()) == 1 else f"'{kw.name}'"
-            if kw.mode == schemas.KeywordModes.optional:
-                qr_opt = f'{token} & {query} | {qr_opt}' if query else f'{token} | {qr_opt}'
-
-        return qr_opt.rstrip(' | ') if qr_opt else query
-
-
-class KeywordRepository(Repository):
-    """Репозиторий модели ключевого слова."""
-
-    async def add(self, keyword: str, mode: str, user_id: int) -> None:
-        """Добавление ключевого слова для пользователя.
-
-        Если пользователь новый, сначала добавляем пользователя.
-        """
-        user = await UserRepository(self.session).get(id=user_id)
-        if not user:
-            user = await UserRepository(self.session).add(id=user_id)
-
-        async with self.session.begin() as session:
-            query = sa.insert(models.Keyword)
-            query = query.values(name=keyword, mode=mode, user_id=user_id)
-            await session.execute(query)
-
-    async def get(self, user_id: Optional[int] = None) -> List[models.Keyword]:
-        """Получение ключевых слов по id пользователя."""
-        async with self.session.begin() as session:
-            query = sa.select(models.Keyword).filter_by(user_id=user_id)
-            res = await session.execute(query)
-            return res.scalars().all()
-
-    async def delete(self, name: str, user_id: int) -> None:
-        """Удаление ключевых слов пользователя."""
-        async with self.session.begin() as session:
-            query = sa.delete(models.Keyword)
-            query = query.filter_by(name=name, user_id=user_id)
-            await session.execute(query)
 
 
 class ChannelRepository(Repository):

@@ -10,8 +10,6 @@ from pydantic import ValidationError
 from telethon.errors import FloodWaitError
 from telethon.events import common
 
-logger = logging.getLogger(__name__)
-
 
 def exception_handler(func: Callable) -> Callable:
     """Декоратор для хэндлеров сообщений, обрабатывающий исключения."""
@@ -27,16 +25,10 @@ def exception_handler(func: Callable) -> Callable:
         except TimeoutError:
             await event.client.set_state(sender.id, None)   # сбрасываем state пользователя
             await event.respond('Недождался ответа...:( Попробуйте заново.')
-        except UniqueViolationError:
-            await event.client.set_state(sender.id, None)   # сбрасываем state пользователя
-            await event.respond(f'Такое слово уже добавлено: {event.message.data}')
-        except FloodWaitError as err:
-            logger.error(f'Sleeping for {err.seconds} on flood wait')
-            await asyncio.sleep(err.seconds)
-        except Exception:
+        except Exception as err:
             await event.client.set_state(sender.id, None)   # сбрасываем state пользователя
             await event.respond('Упс...Кажется у нас авария. Все починим!')
-            raise
+            logging.error(err)
         else:
             return res
     return wrapper
