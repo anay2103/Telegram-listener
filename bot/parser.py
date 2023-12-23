@@ -12,8 +12,8 @@ class Parser:
     user_repository: UserRepository
 
     url_regex = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-    any_grade = r'[Tt]eam\s*[Ll]ead|[Ss]enior|[Mm]iddle|[Jj]un(ior)?'
-    no_teamlead = r'^((?![Tt]eam\s*[Ll]ead).)*$'
+    any_grade = r'[Tt]e[am|ch]+\W*[Ll]ead|[Ss]enior|[Mm]iddle|[Jj]un(ior)?'
+    no_teamlead = r'^((?![Tt]e[am|ch]+\W*[Ll]ead).)*$'
     python_developer = (
         '[Pp]ython.*([Dd]eveloper|[Рр]азработчик|[Пр]ограммист|[Bb]ackend|[Ee]ngineer)|'
         '([Dd]eveloper|[Рр]азработчик|[Пр]ограммист|[Bb]ackend|[Ee]ngineer).*[Pp]ython'
