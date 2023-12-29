@@ -26,7 +26,6 @@ class Client(Parser, TelegramClient):
     ) -> None:
         """Клиент может иметь атрибутом бот для пересылки сообщений пользователям."""
         self.bot = bot
-        self.recipients = set()
         self.redis: Optional[aioredis.Redis] = None
         self.engine: Optional[AsyncEngine] = None
         self.db_session: sessionmaker

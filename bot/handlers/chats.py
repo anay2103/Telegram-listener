@@ -19,7 +19,7 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
     """
     chat = await event.get_chat()
     message = event.message
-    await event.client.process(message.text)
+    recipients = await event.client.process(message.text)
     message.text = FWD_TEXT.format(
         chat_title=chat.username if isinstance(chat, TLUser) else chat.title,
         chat_id=chat.id,
@@ -29,12 +29,12 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
     # удаляем медиафайлы так как иначе получаем MediaCaptionTooLongError
     # TODO: возможно есть способы обхода
     message.media = None
-    recipients = event.client.recipients
+
     if recipients:
         logging.info('Got message %s for sending', message.text)
     else:
         logging.info('Got message %s, skipping', message.text)
-    for user in event.client.recipients:
+    for user in recipients:
         await event.client.bot.send_message(user.id, message)
         logging.info('Sended  to recipient %s', user.id)
 

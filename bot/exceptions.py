@@ -1,13 +1,10 @@
 """Обработчик исключений."""
-import asyncio
 import functools
 import logging
 from asyncio.exceptions import TimeoutError
 from typing import Any, Callable
 
-from asyncpg.exceptions import UniqueViolationError
 from pydantic import ValidationError
-from telethon.errors import FloodWaitError
 from telethon.events import common
 
 
