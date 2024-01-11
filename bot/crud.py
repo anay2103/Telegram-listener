@@ -50,6 +50,12 @@ class UserRepository(Repository):
             users = await session.execute(query)
             return users.scalars().all()
 
+    async def delete(self, id: int) -> None:
+        """Удаление пользователя."""
+        async with self.session.begin() as session:
+            query = sa.delete(models.User).filter_by(id=id)
+            await session.execute(query)
+
 
 class ChannelRepository(Repository):
     """Репозиторий модели чата."""

@@ -25,7 +25,7 @@ def exception_handler(func: Callable) -> Callable:
         except Exception as err:
             await event.client.set_state(sender.id, None)   # сбрасываем state пользователя
             await event.respond('Упс...Кажется у нас авария. Все починим!')
-            logging.error(err)
+            logging.error(err, exc_info=True)
         else:
             return res
     return wrapper

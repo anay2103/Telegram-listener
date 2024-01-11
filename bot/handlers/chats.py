@@ -1,10 +1,17 @@
 """Хэндлеры команд бота."""
 import logging
+import re
+from functools import partial
 
 from telethon import Button, events
 from telethon.tl.types import User as TLUser
 
-from bot import crud, filters, schemas
+from bot import crud, filters
+from bot.schemas import (
+    ChannelAdminState,
+    ChoosingGradeState,
+    Grades,
+)
 from bot.exceptions import exception_handler
 from bot.handlers.base import Commands
 
@@ -45,12 +52,12 @@ async def add_chat(event: events.NewMessage.Event) -> None:
     """Добавление чата. Доступ только у суперюзера."""
     sender = await event.get_sender()
     await event.respond('В ответном сообщении введите название Телеграм-чата')
-    await event.client.set_state(sender.id, filters.ChannelAdminState.adding_channel)
+    await event.client.set_state(sender.id, ChannelAdminState.adding_channel)
     event.message = None
 
 
 @exception_handler
-@events.register(events.NewMessage(func=filters.adding_channel))
+@events.register(events.NewMessage(func=partial(filters.filter_status, status=ChannelAdminState.adding_channel)))
 async def adding_chat_callback(event: events.NewMessage.Event) -> None:
     """Коллбэк для добавления чата."""
     chat_name = event.message.text
@@ -72,7 +79,7 @@ async def delete_chat(event: events.NewMessage.Event) -> None:
     """Удаление чата. Доступ только у суперюзера."""
     sender = await event.get_sender()
     chats = await event.client.channel_repository.list()
-    await event.client.set_state(sender.id, filters.ChannelAdminState.deleting_channel)
+    await event.client.set_state(sender.id, ChannelAdminState.deleting_channel)
     await event.respond(
         'Выберите чат, который хотите удалить: ',
         buttons=[
@@ -82,7 +89,7 @@ async def delete_chat(event: events.NewMessage.Event) -> None:
 
 
 @exception_handler
-@events.register(events.CallbackQuery(func=filters.deleting_channel))
+@events.register(events.CallbackQuery(func=partial(filters.filter_status, status=ChannelAdminState.deleting_channel)))
 async def deleting_chat_callback(event: events.CallbackQuery.Event) -> None:
     """Коллбэк для удаления чата."""
     chat_id = int(event.data.decode())
@@ -110,44 +117,47 @@ async def show_chats(event: events.NewMessage.Event) -> None:
 async def add_grade(event: events.NewMessage.Event) -> None:
     """Добавление грейда для поиска."""
     sender = await event.get_sender()
-    await event.client.set_state(sender.id, filters.ChoosingGradeState.сhoosing_grade)
+    await event.client.set_state(sender.id, ChoosingGradeState.сhoosing_grade)
     await event.respond(
         'Выберите грейд: ',
         buttons=[
-            [Button.inline('Junior', data=schemas.Grades.JUNIOR.name)],
-            [Button.inline('Middle', data=schemas.Grades.MIDDLE.name)],
-            [Button.inline('Senior', data=schemas.Grades.SENIOR.name)],
+            [Button.inline('Junior', data=Grades.JUNIOR.name)],
+            [Button.inline('Middle', data=Grades.MIDDLE.name)],
+            [Button.inline('Senior', data=Grades.SENIOR.name)],
         ],
     )
 
 
 @exception_handler
-@events.register(events.CallbackQuery(func=filters.choosing_grade))
+@events.register(events.CallbackQuery(func=partial(filters.filter_status, status=ChoosingGradeState.сhoosing_grade)))
 async def choosing_grade(event: events.CallbackQuery.Event) -> None:
     """Коллбэк для выбора грейда."""
     grade = event.data.decode()
-    if grade not in schemas.Grades.choices():
+    if grade not in Grades.choices():
         raise ValueError('Недопустимое значение грейда')
     sender = await event.get_sender()
     await event.client.user_repository.update(id=sender.id, grade=grade)
-    await event.client.set_state(sender.id, filters.ChoosingGradeState.choosing_no_grade_ok)
+    await event.client.set_state(sender.id, ChoosingGradeState.choosing_no_grade_ok)
     await event.respond(
         'Присылать вакансии без указания грейда?',
         buttons=[
-            [Button.inline('Да', data=True)],
-            [Button.inline('Нет', data=False)],
+            [Button.inline('Да', data='yes')],
+            [Button.inline('Нет', data='no')],
         ],
     )
-    event.query = None
 
 
 @exception_handler
-@events.register(events.CallbackQuery(func=filters.сhoosing_no_grade_ok))
+@events.register(events.CallbackQuery(
+    data=re.compile('yes|no'),
+    func=partial(filters.filter_status, status=ChoosingGradeState.choosing_no_grade_ok)
+))
 async def choosing_no_grade_ok(event: events.CallbackQuery.Event) -> None:
     """Коллбэк для выбора подписки на вакансии без указания грейда."""
-    no_grade_ok = event.data.decode()
+    no_grade_data = event.data.decode()
     sender = await event.get_sender()
-    await event.client.user_repository.update(id=sender.id, no_grade_ok=bool(no_grade_ok))
+    no_grade_ok = True if no_grade_data == 'yes' else False
+    await event.client.user_repository.update(id=sender.id, no_grade_ok=no_grade_ok)
     await event.client.set_state(sender.id, None)
     await event.respond('Готово! Начинаем поиск.', buttons=Button.clear())
 
@@ -159,4 +169,34 @@ async def show_grade(event: events.NewMessage.Event) -> None:
     sender = await event.get_sender()
     session = event.client.db_session
     user = await crud.UserRepository(session).get(sender.id)
-    return await event.respond(user.grade)
+    no_user = f'Ваш грейд пока не заполнен, введите команду {Commands.add_grade}'
+    answer = user.grade if user else no_user
+    await event.respond(answer)
+
+
+@exception_handler
+@events.register(events.NewMessage(pattern=Commands.delete_grade))
+async def delete_grade(event: events.NewMessage.Event) -> None:
+    """Удаление грейда для поиска."""
+    sender = await event.get_sender()
+    await event.client.set_state(sender.id, ChoosingGradeState.deleting_grade)
+    await event.respond(
+        'Вы действительно не хотите оставаться с нами?',
+        buttons=[
+            [Button.inline('Хочу остаться!', data='yes')],
+            [Button.inline('Нет, исключите меня из рассылки', data='no')],
+        ],
+    )
+
+
+@exception_handler
+@events.register(events.CallbackQuery(func=partial(filters.filter_status, status=ChoosingGradeState.deleting_grade)))
+async def deleting_grade(event: events.CallbackQuery.Event) -> None:
+    """Коллбэк для удаления грейда."""
+    response = event.data.decode()
+    sender = await event.get_sender()
+    await event.client.set_state(sender.id, None)
+    if response == 'no':
+        await event.client.user_repository.delete(id=sender.id)
+        return await event.respond('Вы успешно исключены из списка рассылки. Желаем удачи!', buttons=Button.clear())
+    await event.respond('Ура! Вы решили остаться с нами!', buttons=Button.clear())

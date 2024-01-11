@@ -13,6 +13,7 @@ class Commands(str, Enum):
     show_chats = '/show_chats'
     add_grade = '/add_grade'
     show_grade = '/show_grade'
+    delete_grade = '/delete_grade'
 
 
 @events.register(events.NewMessage(pattern=Commands.start))
@@ -34,5 +35,6 @@ async def help(event):
         f'{Commands.help} - Справка \n'
         f'{Commands.show_chats} - Список чатов для поиска \n'
         f'{Commands.add_grade} - Добавить грейд вакансии для поиска \n'
-        f'{Commands.show_grade} - Показать мой текущий грейд для поиска'
+        f'{Commands.show_grade} - Показать мой текущий грейд для поиска \n'
+        f'{Commands.delete_grade} - Удалить грейд и отписаться от рассылки'
     )

@@ -11,6 +11,8 @@ BOT_HANDLERS = [
     chats.deleting_chat_callback,
     chats.add_grade,
     chats.show_grade,
+    chats.delete_grade,
     chats.choosing_grade,
+    chats.deleting_grade,
     chats.choosing_no_grade_ok,
 ]

@@ -34,3 +34,18 @@ class Grades (str, Enum):
     @classmethod
     def choices(cls):
         return [item.name for item in cls]
+
+
+class ChoosingGradeState(str, Enum):
+    """Статусы пользователя."""
+
+    сhoosing_grade = 'choosing grade'
+    choosing_no_grade_ok = 'choosing no grade ok'
+    deleting_grade = 'deleting grade'
+
+
+class ChannelAdminState(str, Enum):
+    """Статусы админа при работе с чатами."""
+
+    adding_channel = 'adding_channel'
+    deleting_channel = 'deleting_channel'
