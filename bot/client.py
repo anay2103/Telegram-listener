@@ -32,6 +32,7 @@ class Client(Parser, TelegramClient):
         self.user_repository: UserRepository
         self.channel_repository: ChannelRepository
         self.limiter = AsyncLimiter(settings.MESSAGE_RATE_LIMIT)
+        self.flood_sleep_threshold = settings.FLOOD_WAIT_THRESHOLD
         super().__init__(**kwargs)
 
     def db_connect(self) -> None:
