@@ -15,8 +15,8 @@ class Parser:
     any_grade = r'[Tt]e[am|ch]+\W*[Ll]ead|[Ss]enior|[Mm]iddle|[Jj]un(ior)?'
     no_teamlead = r'^((?![Tt]e[am|ch]+\W*[Ll]ead).)*$'
     python_developer = (
-        '[Pp]ython.*([Dd]eveloper|[Рр]азработчик|[Пр]ограммист|[Вв]акансия|[Bb]ackend|[Ee]ngineer)|'
-        '([Dd]eveloper|[Рр]азработчик|[Пр]ограммист|[Вв]акансия|[Bb]ackend|[Ee]ngineer).*[Pp]ython'
+        r'[Pp]ython.*([Dd]eveloper|[Рр]азработчик|[Пп]рограммист\s|[Вв]акансия\s|[Bb]ackend|[Ee]ngineer)|'
+        r'([Dd]eveloper|[Рр]азработчик|[Пп]рограммист\s|[Вв]акансия\s|[Bb]ackend|[Ee]ngineer).*[Pp]ython'
     )
     no_middle = '^(?![Mm]iddle).*$'
     no_senior = '^((?![Ss]enior).)*$'
