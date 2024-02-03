@@ -169,9 +169,12 @@ async def show_grade(event: events.NewMessage.Event) -> None:
     sender = await event.get_sender()
     session = event.client.db_session
     user = await crud.UserRepository(session).get(sender.id)
-    no_user = f'Ваш грейд пока не заполнен, введите команду {Commands.add_grade}'
-    answer = user.grade if user else no_user
-    await event.respond(answer)
+    if user:
+        search_no_grade = u'\u2705' if user.no_grade_ok is True else u'\u274C'
+        grade_answer = f'Грейд для поиска - {user.grade},\nПоиск вакансий без указания грейда - {search_no_grade}'
+    else:
+        grade_answer = f'Ваш грейд пока не заполнен, введите команду {Commands.add_grade}'
+    await event.respond(grade_answer)
 
 
 @exception_handler
