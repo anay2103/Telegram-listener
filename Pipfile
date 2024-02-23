@@ -9,6 +9,7 @@ flake8 = "==3.9.2"
 mypy = "==1.1.1"
 pytest = "==7.4.0"
 pytest-asyncio = "==0.20.3"
+pytest-async-sqlalchemy = "==0.2.0"
 pre-commit = "==2.21.0"
 
 [packages]

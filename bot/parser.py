@@ -12,11 +12,11 @@ class Parser:
     user_repository: UserRepository
 
     url_regex = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-    any_grade = r'[Tt]e[am|ch]+\W*[Ll]ead|[Ss]enior|[Mm]iddle|[Jj]un(ior)?'
-    no_teamlead = r'^((?![Tt]e[am|ch]+\W*[Ll]ead).)*$'
+    any_grade = '[Ll]ead|[Ss]enior|[Mm]iddle|[Jj]un(ior)?|[Ii]ntern|[Aa]rchitect|Архитектор|Тимлид'
+    no_teamlead = '^((?![Ll]ead).)*$'
     python_developer = (
-        r'[Pp]ython.*([Dd]eveloper|[Рр]азработчик|[Пп]рограммист\s|[Вв]акансия\s|[Bb]ackend|[Ee]ngineer)|'
-        r'([Dd]eveloper|[Рр]азработчик|[Пп]рограммист\s|[Вв]акансия\s|[Bb]ackend|[Ee]ngineer).*[Pp]ython'
+        r'[Pp]ython.*([Dd]eveloper|[Рр]азработчик\W|[Пп]рограммист\W|[Вв]акансия\W|[Bb]ackend|[Ee]ngineer)|'
+        r'([Dd]eveloper|[Рр]азработчик\W|[Пп]рограммист\W|[Вв]акансия\W|[Bb]ackend|[Ee]ngineer).*[Pp]ython'
     )
     no_middle = '^(?![Mm]iddle).*$'
     no_senior = '^((?![Ss]enior).)*$'
@@ -24,14 +24,15 @@ class Parser:
     middle = '[Mm]iddle'
     senior = '[Ss]enior'
     stop_words = '[Рр]еклама'
-    utm_marker = 'utm'  # utm-разметка ссылок
 
     async def check_stop_words(self, text: str) -> bool:
         """Проверка на рекламные сообщения."""
-        urls = re.findall(self.url_regex, text)
-        utms = any([re.search(self.utm_marker, url) for url in urls])
         stop_words = re.search(self.stop_words, text)
-        return bool(utms or stop_words)
+        return bool(stop_words)
+
+    async def remove_urls(self, text: str) -> str:
+        """Очистка проверяемого текста от url-адресов."""
+        return re.sub(self.url_regex, '', text)
 
     async def check_python_developer(self, text: str) -> Optional[re.Match[str]]:
         """Проверка на название вакансии."""
@@ -69,6 +70,8 @@ class Parser:
         recipients: Set[int] = set()
         if (await self.check_stop_words(text)):
             return recipients
+
+        text = await self.remove_urls(text)
 
         if (await self.check_python_developer(text)):
             recipients = await self.check_any_grade(text, recipients)
