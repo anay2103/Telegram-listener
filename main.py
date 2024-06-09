@@ -34,7 +34,7 @@ def main():
         client.bot.redis_connect()
         client.bot.start(bot_token=settings.BOT_TOKEN)
         logging.info('Bot successfully started')
-        client.loop.run_forever()
+        client.loop.run_until_complete(client.disconnected)
 
 
 if __name__ == '__main__':
