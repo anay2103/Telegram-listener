@@ -3,7 +3,7 @@ import logging
 import re
 from functools import partial
 
-from telethon import Button, events
+from telethon import Button, errors, events
 from telethon.tl.types import User as TLUser
 
 from bot import crud, filters
@@ -42,8 +42,12 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
     else:
         logging.info('Got message %s, skipping', message.text)
     for user in recipients:
-        await event.client.bot.send_message(user.id, message)
-        logging.info('Sended  to recipient %s', user.id)
+        try:
+            await event.client.bot.send_message(user.id, message)
+        except errors.RPCError as err:
+            logging.error('Error sending to recipient %s: %s', user.id, err, exc_info=True)
+        else:
+            logging.info('Sended  to recipient %s', user.id)
 
 
 @exception_handler

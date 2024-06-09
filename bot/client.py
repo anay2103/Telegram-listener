@@ -39,7 +39,7 @@ class Client(Parser, TelegramClient):
         """Подключение к БД."""
         uri = settings.build_postgres_uri()
         try:
-            engine = create_async_engine(uri, echo=True)
+            engine = create_async_engine(uri)
         except Exception as error:
             logging.error(error, exc_info=True)
             raise
@@ -80,12 +80,9 @@ class Client(Parser, TelegramClient):
         """Получение значения по ключу в Redis."""
         if not self.redis:
             self.redis_connect()
-        value = await self.redis.get(key)  # type: ignore
-        try:
+        value = (await self.redis.get(key))  # type: ignore
+        if value:
             return json.loads(value)
-        except Exception as error:
-            logging.error(error, exc_info=True)
-            return
 
     async def send_message(
         self,
