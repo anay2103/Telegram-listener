@@ -110,11 +110,20 @@ def text11(request) -> str:
     """
 
 
+@pytest.fixture
+def text12(request) -> str:
+    return """
+    I am currently looking for a Python Data Engineer with experience with ClickHouse.
+    This role encompasses the management of data from our internal trading systems
+    """
+
+
 @pytest.mark.parametrize(
     'text_name',
     [
         'text1', 'text2', 'text3', 'text4', 'text5', 'text6', 'text7', pytest.param('text8', marks=pytest.mark.xfail),
         'text9',  pytest.param('text10', marks=pytest.mark.xfail), pytest.param('text11', marks=pytest.mark.xfail),
+        'text12',
     ])
 async def test_middle_no_grade_ok_true(
     tgclient: client.Client,
@@ -132,7 +141,7 @@ async def test_middle_no_grade_ok_true(
     'text_name',
     [
         'text1', 'text2', pytest.param('text3', marks=pytest.mark.xfail), 'text4', 'text5', 'text6', 'text7', 'text8',
-        pytest.param('text9', marks=pytest.mark.xfail), 'text10', 'text11'
+        pytest.param('text9', marks=pytest.mark.xfail), 'text10', 'text11', 'text12',
     ]
 )
 async def test_middle_no_grade_ok_false_without_grade(
@@ -152,7 +161,7 @@ async def test_middle_no_grade_ok_false_without_grade(
     [
         'text1', 'text2', pytest.param('text3', marks=pytest.mark.xfail), 'text4', 'text5', 'text6', 'text7',
         pytest.param('text8', marks=pytest.mark.xfail), pytest.param('text9', marks=pytest.mark.xfail),
-        pytest.param('text10', marks=pytest.mark.xfail), pytest.param('text11', marks=pytest.mark.xfail),
+        pytest.param('text10', marks=pytest.mark.xfail), pytest.param('text11', marks=pytest.mark.xfail), 'text12',
     ]
 )
 async def test_junior_no_grade_ok_true(
@@ -169,7 +178,7 @@ async def test_junior_no_grade_ok_true(
 
 @pytest.mark.parametrize(
     'text_name',
-    ['text1', 'text2', 'text3', 'text4', 'text5', 'text6', 'text7', 'text8', 'text9', 'text10', 'text11']
+    ['text1', 'text2', 'text3', 'text4', 'text5', 'text6', 'text7', 'text8', 'text9', 'text10', 'text11', 'text12']
 )
 async def test_junior_no_grade_ok_false(
     tgclient: client.Client,
