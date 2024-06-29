@@ -118,12 +118,74 @@ def text12(request) -> str:
     """
 
 
+@pytest.fixture
+def text13(request) -> str:
+    return """
+    Старший разработчик (Python)**
+
+    **Ожидания от кандидата:**
+     - Опыт участия в сode review и желание стать Lead;
+     - Опыт промышленной разработки на Python от 2 лет;
+    """
+
+
+@pytest.fixture
+def text14(request) -> str:
+    return """
+    **Junior Developer (Python и SQL)
+
+    **З/П: **от 60 000 до 80 000₽
+    **Формат работы:** Удалённо
+    """
+
+
+@pytest.fixture
+def text15(request) -> str:
+    return """
+    **СТАЖЕР BACKEND
+    DEVELOPER [КОМАНДА РАЗРАБОТКИ СРЕДСТВ АВТОМАТИЗАЦИИ**]
+    #офис #intern
+    **знание Python
+    """
+
+
+@pytest.fixture
+def text16(request) -> str:
+    return """
+    **Python Backend Developer**
+    at **DataSpike** — is an independent international RegTech startup founded in 2020 and currently located in Dubai.
+    """
+
+
+@pytest.fixture
+def text17(request) -> str:
+    return """
+    Здравствуйте. Я начинающий Python разработчик. Ищу работу на фулл или частичную занятость.
+    """
+
+
+@pytest.fixture
+def text18(request) -> str:
+    return """
+    #python #вакансия #job #remote #удаленка #полная #fulltime
+
+    Привет! Ищем Python Engineer
+
+    Локация: remote (вы должны находиться вне РФ и РБ и иметь ИП).
+    🏝 Всей командой собираемся на teambuilding в Европе дважды в год.
+
+    ✅Вопросы и резюме - @Mat
+    """
+
+
 @pytest.mark.parametrize(
     'text_name',
     [
         'text1', 'text2', 'text3', 'text4', 'text5', 'text6', 'text7', pytest.param('text8', marks=pytest.mark.xfail),
         'text9',  pytest.param('text10', marks=pytest.mark.xfail), pytest.param('text11', marks=pytest.mark.xfail),
-        'text12',
+        'text12',  pytest.param('text13', marks=pytest.mark.xfail), pytest.param('text14', marks=pytest.mark.xfail),
+        pytest.param('text15', marks=pytest.mark.xfail), 'text16', pytest.param('text17', marks=pytest.mark.xfail),
+        'text18',
     ])
 async def test_middle_no_grade_ok_true(
     tgclient: client.Client,
@@ -141,7 +203,8 @@ async def test_middle_no_grade_ok_true(
     'text_name',
     [
         'text1', 'text2', pytest.param('text3', marks=pytest.mark.xfail), 'text4', 'text5', 'text6', 'text7', 'text8',
-        pytest.param('text9', marks=pytest.mark.xfail), 'text10', 'text11', 'text12',
+        pytest.param('text9', marks=pytest.mark.xfail), 'text10', 'text11', 'text12', 'text13', 'text14', 'text15',
+        'text16', 'text17', 'text18',
     ]
 )
 async def test_middle_no_grade_ok_false_without_grade(
@@ -162,6 +225,8 @@ async def test_middle_no_grade_ok_false_without_grade(
         'text1', 'text2', pytest.param('text3', marks=pytest.mark.xfail), 'text4', 'text5', 'text6', 'text7',
         pytest.param('text8', marks=pytest.mark.xfail), pytest.param('text9', marks=pytest.mark.xfail),
         pytest.param('text10', marks=pytest.mark.xfail), pytest.param('text11', marks=pytest.mark.xfail), 'text12',
+        pytest.param('text13', marks=pytest.mark.xfail), 'text14', 'text15', 'text16',
+        pytest.param('text17', marks=pytest.mark.xfail), 'text18',
     ]
 )
 async def test_junior_no_grade_ok_true(
@@ -178,7 +243,11 @@ async def test_junior_no_grade_ok_true(
 
 @pytest.mark.parametrize(
     'text_name',
-    ['text1', 'text2', 'text3', 'text4', 'text5', 'text6', 'text7', 'text8', 'text9', 'text10', 'text11', 'text12']
+    [
+        'text1', 'text2', 'text3', 'text4', 'text5', 'text6', 'text7', 'text8', 'text9', 'text10', 'text11', 'text12',
+        'text13', pytest.param('text14', marks=pytest.mark.xfail), pytest.param('text15', marks=pytest.mark.xfail),
+        'text16', 'text17', 'text18',
+    ]
 )
 async def test_junior_no_grade_ok_false(
     tgclient: client.Client,

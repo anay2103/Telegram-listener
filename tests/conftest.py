@@ -1,6 +1,5 @@
 import asyncio
 import os
-import random
 
 import pytest
 import sqlalchemy as sa
@@ -46,7 +45,6 @@ async def tgclient(sqla_engine) -> client.Client:
 @pytest.fixture
 async def make_user(sqla_engine) -> AsyncGenerator:
     """User instance."""
-    users = []
     db_session = sessionmaker(sqla_engine,  expire_on_commit=False, class_=AsyncSession)
 
     async def make(
@@ -54,18 +52,12 @@ async def make_user(sqla_engine) -> AsyncGenerator:
         no_grade_ok: bool = False,
     ) -> models.User:
         query = sa.insert(models.User)
-        query = query.values(
-            id=random.randint(1, 100), grade=grade, no_grade_ok=no_grade_ok
-        )
+        query = query.values(grade=grade, no_grade_ok=no_grade_ok)
         async with db_session.begin() as session:
             result = await session.execute(query.returning(models.User))
-            user = result.mappings().one()['User']
-            users.append(user)
+            user, *_ = result.one()
             return user
     yield make
 
-    for user in users:
-        query = sa.delete(models.User)
-        query = query.filter_by(id=user.id)
-        async with db_session.begin() as session:
-            await session.execute(query)
+    async with db_session.begin() as session:
+        await session.execute(sa.delete(models.User))

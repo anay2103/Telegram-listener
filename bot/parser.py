@@ -15,20 +15,28 @@ class Parser:
     any_grade = r'[Ll]ead[^\w]|[Ss]enior|[Mm]iddle|[Jj]un(ior)?|[Ii]ntern[^\w]|[Aa]rchitect|Архитектор|Тимлид'
     no_teamlead = '^((?![Ll]ead).)*$'
     python_developer = (
-        r'[Pp]ython.*([Dd]eveloper|[Рр]азработчик\W|[Пп]рограммист\W|[Вв]акансия\W|[Bb]ackend|[Ee]ngineer)|'
-        r'([Dd]eveloper|[Рр]азработчик\W|[Пп]рограммист\W|[Вв]акансия\W|[Bb]ackend|[Ee]ngineer).*[Pp]ython'
+        r'python.*(developer|разработчик\W|программист\W|вакансия\W|backend|engineer)|'
+        r'(developer|разработчик\W|программист\W|вакансия\W|backend|engineer).*python'
     )
     no_middle = '^(?![Mm]iddle).*$'
     no_senior = '^((?![Ss]enior).)*$'
-    junior = '[Jj]un(?:ior)'
+    junior = r'[Ii]ntern[^\w]|[Jj]un(?:ior)'
     middle = '[Mm]iddle'
     senior = '[Ss]enior'
     stop_words = '[Рр]еклама'
+    heading = r'((?:[^\n]+\n?\n?){1,2})'
+    cv = r'резюме|cv|\sя\s'
 
     async def check_stop_words(self, text: str) -> bool:
         """Проверка на рекламные сообщения."""
         stop_words = re.search(self.stop_words, text)
         return bool(stop_words)
+
+    async def check_cv(self, text: str) -> bool:
+        """Проверка что в сообщении резюме, а не вакансия."""
+        if heading := re.search(self.heading, text):
+            return bool(re.search(self.cv, heading[0], re.IGNORECASE))
+        return False
 
     async def remove_urls(self, text: str) -> str:
         """Очистка проверяемого текста от url-адресов."""
@@ -36,7 +44,7 @@ class Parser:
 
     async def check_python_developer(self, text: str) -> Optional[re.Match[str]]:
         """Проверка на название вакансии."""
-        return re.search(self.python_developer, text, re.DOTALL)
+        return re.search(self.python_developer, text, re.DOTALL | re.IGNORECASE)
 
     async def check_any_grade(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на отсутствие грейда в вакансии."""
@@ -69,6 +77,9 @@ class Parser:
         """
         recipients: Set[models.User] = set()
         if (await self.check_stop_words(text)):
+            return recipients
+
+        if (await self.check_cv(text)):
             return recipients
 
         text = await self.remove_urls(text)
