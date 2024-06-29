@@ -1,7 +1,7 @@
 import re
 from typing import Optional, Set
 
-from bot import schemas
+from bot import schemas, models
 from bot.crud import UserRepository
 
 
@@ -12,7 +12,7 @@ class Parser:
     user_repository: UserRepository
 
     url_regex = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-    any_grade = r'[Ll]ead\s|[Ss]enior|[Mm]iddle|[Jj]un(ior)?|[Ii]ntern\s|[Aa]rchitect|Архитектор|Тимлид'
+    any_grade = r'[Ll]ead[^\w]|[Ss]enior|[Mm]iddle|[Jj]un(ior)?|[Ii]ntern[^\w]|[Aa]rchitect|Архитектор|Тимлид'
     no_teamlead = '^((?![Ll]ead).)*$'
     python_developer = (
         r'[Pp]ython.*([Dd]eveloper|[Рр]азработчик\W|[Пп]рограммист\W|[Вв]акансия\W|[Bb]ackend|[Ee]ngineer)|'
@@ -38,36 +38,36 @@ class Parser:
         """Проверка на название вакансии."""
         return re.search(self.python_developer, text, re.DOTALL)
 
-    async def check_any_grade(self, text: str, recipients: Set[int]) -> Set[int]:
+    async def check_any_grade(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на отсутствие грейда в вакансии."""
         if not re.search(self.any_grade, text):
             recipients.update(await self.user_repository.list(no_grade_ok=True))
         return recipients
 
-    async def check_junior(self, text: str, recipients: Set[int]) -> Set[int]:
+    async def check_junior(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на грейд junior."""
         if bool(re.search(self.junior, text) and re.search(self.no_middle, text, re.DOTALL)):
             recipients.update(await self.user_repository.list(grade=schemas.Grades.JUNIOR.name))
         return recipients
 
-    async def check_middle(self, text: str, recipients: Set[int]) -> Set[int]:
+    async def check_middle(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на грейд middle."""
         if bool(re.search(self.middle, text) and re.search(self.no_senior, text, re.DOTALL)):
             recipients.update(await self.user_repository.list(grade=schemas.Grades.MIDDLE.name))
         return recipients
 
-    async def check_senior(self, text: str, recipients: Set[int]) -> Set[int]:
+    async def check_senior(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на грейд senior."""
         if bool(re.search(self.senior, text) and re.search(self.no_teamlead, text, re.DOTALL)):
             recipients.update(await self.user_repository.list(grade=schemas.Grades.SENIOR.name))
         return recipients
 
-    async def process(self, text: str) -> Set[int]:
+    async def process(self, text: str) -> Set[models.User]:
         """Проверка текста сообщения.
 
         При наличии выбранного грейда в тексте пользователь включается в список получателей.
         """
-        recipients: Set[int] = set()
+        recipients: Set[models.User] = set()
         if (await self.check_stop_words(text)):
             return recipients
 
