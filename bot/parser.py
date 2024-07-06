@@ -25,7 +25,7 @@ class Parser:
     senior = '[Ss]enior'
     stop_words = '[Рр]еклама'
     heading = r'((?:[^\n]+\n?\n?){1,2})'
-    cv = r'резюме|cv|\sя\s'
+    cv = r'резюме|cv|[^\w][я|i|I]\s'
 
     async def check_stop_words(self, text: str) -> bool:
         """Проверка на рекламные сообщения."""

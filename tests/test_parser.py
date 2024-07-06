@@ -183,9 +183,9 @@ def text18(request) -> str:
     [
         'text1', 'text2', 'text3', 'text4', 'text5', 'text6', 'text7', pytest.param('text8', marks=pytest.mark.xfail),
         'text9',  pytest.param('text10', marks=pytest.mark.xfail), pytest.param('text11', marks=pytest.mark.xfail),
-        'text12',  pytest.param('text13', marks=pytest.mark.xfail), pytest.param('text14', marks=pytest.mark.xfail),
-        pytest.param('text15', marks=pytest.mark.xfail), 'text16', pytest.param('text17', marks=pytest.mark.xfail),
-        'text18',
+        pytest.param('text12', marks=pytest.mark.xfail), pytest.param('text13', marks=pytest.mark.xfail),
+        pytest.param('text14', marks=pytest.mark.xfail), pytest.param('text15', marks=pytest.mark.xfail),
+        'text16', pytest.param('text17', marks=pytest.mark.xfail), 'text18',
     ])
 async def test_middle_no_grade_ok_true(
     tgclient: client.Client,
@@ -224,9 +224,9 @@ async def test_middle_no_grade_ok_false_without_grade(
     [
         'text1', 'text2', pytest.param('text3', marks=pytest.mark.xfail), 'text4', 'text5', 'text6', 'text7',
         pytest.param('text8', marks=pytest.mark.xfail), pytest.param('text9', marks=pytest.mark.xfail),
-        pytest.param('text10', marks=pytest.mark.xfail), pytest.param('text11', marks=pytest.mark.xfail), 'text12',
-        pytest.param('text13', marks=pytest.mark.xfail), 'text14', 'text15', 'text16',
-        pytest.param('text17', marks=pytest.mark.xfail), 'text18',
+        pytest.param('text10', marks=pytest.mark.xfail), pytest.param('text11', marks=pytest.mark.xfail),
+        pytest.param('text12', marks=pytest.mark.xfail), pytest.param('text13', marks=pytest.mark.xfail),
+        'text14', 'text15', 'text16', pytest.param('text17', marks=pytest.mark.xfail), 'text18',
     ]
 )
 async def test_junior_no_grade_ok_true(
