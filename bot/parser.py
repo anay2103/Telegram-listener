@@ -12,20 +12,18 @@ class Parser:
     user_repository: UserRepository
 
     url_regex = r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-    any_grade = r'[Ll]ead[^\w]|[Ss]enior|[Mm]iddle|[Jj]un(ior)?|[Ii]ntern[^\w]|[Aa]rchitect|Архитектор|Тимлид'
+    any_grade = r'lead[^\w]|senior|middle|jun(ior)?|intern[^\w]|architect[^\w]|Архитектор|Тимлид'
     no_teamlead = '^((?![Ll]ead).)*$'
     python_developer = (
         r'python.*(developer|разработчик\W|программист\W|вакансия\W|backend|engineer)|'
         r'(developer|разработчик\W|программист\W|вакансия\W|backend|engineer).*python'
     )
-    no_middle = '^(?![Mm]iddle).*$'
-    no_senior = '^((?![Ss]enior).)*$'
     junior = r'[Ii]ntern[^\w]|[Jj]un(?:ior)'
     middle = '[Mm]iddle'
     senior = '[Ss]enior'
     stop_words = '[Рр]еклама'
     heading = r'((?:[^\n]+\n?\n?){1,2})'
-    cv = r'резюме|cv|[^\w][я|i|I]\s'
+    cv = r'резюме|cv|[^\w][яiI]\s'
 
     async def check_stop_words(self, text: str) -> bool:
         """Проверка на рекламные сообщения."""
@@ -48,25 +46,25 @@ class Parser:
 
     async def check_any_grade(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на отсутствие грейда в вакансии."""
-        if not re.search(self.any_grade, text):
+        if not re.search(self.any_grade, text, re.IGNORECASE):
             recipients.update(await self.user_repository.list(no_grade_ok=True))
         return recipients
 
     async def check_junior(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на грейд junior."""
-        if bool(re.search(self.junior, text) and re.search(self.no_middle, text, re.DOTALL)):
+        if bool(re.search(self.junior, text)):
             recipients.update(await self.user_repository.list(grade=schemas.Grades.JUNIOR.name))
         return recipients
 
     async def check_middle(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на грейд middle."""
-        if bool(re.search(self.middle, text) and re.search(self.no_senior, text, re.DOTALL)):
+        if bool(re.search(self.middle, text)):
             recipients.update(await self.user_repository.list(grade=schemas.Grades.MIDDLE.name))
         return recipients
 
     async def check_senior(self, text: str, recipients: Set[models.User]) -> Set[models.User]:
         """Проверка на грейд senior."""
-        if bool(re.search(self.senior, text) and re.search(self.no_teamlead, text, re.DOTALL)):
+        if bool(re.search(self.senior, text)):
             recipients.update(await self.user_repository.list(grade=schemas.Grades.SENIOR.name))
         return recipients
 
