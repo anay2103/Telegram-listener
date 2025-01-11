@@ -11,6 +11,7 @@ BOT_NAME = os.getenv('BOT_NAME')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 CLIENT_SESSION = os.getenv('CLIENT_SESSION')
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 # количество отправляемых ботом сообщений в секунду
 MESSAGE_RATE_LIMIT = 20
 # период sleep после получения FloodWaitError

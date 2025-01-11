@@ -1,22 +1,20 @@
 """Клиент Телеграма."""
 import json
 import logging
-from typing import Any, Coroutine, List, Optional
+from typing import Any, Coroutine, Optional
 
-import aioredis
 from aiolimiter import AsyncLimiter
-from sqlalchemy.ext.asyncio import (AsyncEngine, AsyncSession,
-                                    create_async_engine)
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from redis import asyncio as aioredis
 from telethon import TelegramClient, hints
 from telethon.tl import types
 
 from bot import settings
-from bot.crud import ChannelRepository, UserRepository
-from bot.parser import Parser
+from bot.service import TelegramService
+from bot.openai import OpenAIClient
 
 
-class Client(Parser, TelegramClient):
+class Client(OpenAIClient, TelegramService, TelegramClient):
     """Клиент Телеграма с доступом в БД и кэш Redis."""
 
     def __init__(
@@ -28,9 +26,6 @@ class Client(Parser, TelegramClient):
         self.bot = bot
         self.redis: Optional[aioredis.Redis] = None
         self.engine: Optional[AsyncEngine] = None
-        self.db_session: sessionmaker
-        self.user_repository: UserRepository
-        self.channel_repository: ChannelRepository
         self.limiter = AsyncLimiter(settings.MESSAGE_RATE_LIMIT)
         self.flood_sleep_threshold = settings.FLOOD_WAIT_THRESHOLD
         super().__init__(**kwargs)
@@ -45,15 +40,6 @@ class Client(Parser, TelegramClient):
             raise
         self.engine = engine
 
-        try:
-            session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-        except Exception as error:
-            logging.error(error, exc_info=True)
-            raise
-        self.db_session = session
-        self.user_repository = UserRepository(self.db_session)
-        self.channel_repository = ChannelRepository(self.db_session)
-
     def redis_connect(self) -> None:
         """Подключение к Redis."""
         uri = settings.build_redis_uri()
@@ -64,14 +50,12 @@ class Client(Parser, TelegramClient):
             raise
         self.redis = redis
 
-    async def set_state(self, key: str, value: Optional[str] = None) -> None:
+    async def set_state(self, key: str, data: Optional[Any] = None) -> None:
         """Добавление пары ключ-значение в Redis."""
         if not self.redis:
             self.redis_connect()
-        if isinstance(value, List):
-            value = dict.fromkeys(value)
         try:
-            await self.redis.set(key, json.dumps(value))  # type: ignore
+            await self.redis.set(key, json.dumps(data))  # type: ignore
         except Exception as error:
             logging.error(error, exc_info=True)
             return
@@ -83,6 +67,15 @@ class Client(Parser, TelegramClient):
         value = (await self.redis.get(key))  # type: ignore
         if value:
             return json.loads(value)
+
+    async def process_message(self, message: str) -> set[int]:
+        """Обработка входящего сообщения:
+
+        запрос параметров сообщения у ИИ и поиск пользователей с заданными параметрами.
+        """
+        summary = await self.ai_request(message)
+        match = await self.get_searchitems(languages=summary.language, grades=summary.grade)
+        return set(match)
 
     async def send_message(
         self,

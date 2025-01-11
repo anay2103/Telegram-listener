@@ -1,88 +1,69 @@
 """Операции в БД."""
-from typing import Any, List
+from typing import Any, Optional, Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncConnection
+
 from bot import models
 
 
 class Repository:
     """Базовый класс для операций в БД."""
 
-    def __init__(self, session: sessionmaker) -> None:
-        self.session = session
+    table: sa.TableClause
+
+    def __init__(self, conn: AsyncConnection):
+        self.conn = conn
+
+    async def add(self, **values: Any) -> Any:
+        query = sa.insert(self.table)
+        query = query.values(**values).returning(self.table)
+        res = await self.conn.execute(query)
+        return res.scalar()
+
+    async def update(self, id: int, **values) -> Any:
+        query = sa.update(self.table)
+        query = query.filter_by(id=id)
+        query = query.values(**values).returning(self.table)
+        res = await self.conn.execute(query)
+        return res.scalar_one_or_none()
+
+    async def update_or_create(self, id: int, **values) -> Any:
+        if item := await self.update(id=id, **values):
+            return item
+        return await self.add(id=id, **values)
+
+    async def get(self, id: int) -> Optional[Any]:
+        query = sa.select(self.table).filter_by(id=id)
+        res = await self.conn.execute(query)
+        return res.one_or_none()
+
+    async def list(self, *whereclauses) -> Sequence[Any]:
+        """Получение списка объектов."""
+        query = sa.select(self.table)
+        query = query.where(*whereclauses)
+        items = await self.conn.execute(query)
+        return items.all()
+
+    async def delete(self, id: int) -> None:
+        """Удаление."""
+        query = sa.delete(self.table).filter_by(id=id)
+        await self.conn.execute(query)
 
 
 class UserRepository(Repository):
     """Репозиторий модели пользователя."""
 
-    async def add(self, **values: Any) -> models.User:
-        """Добавление пользователя."""
-        async with self.session.begin() as session:
-            query = sa.insert(models.User).values(**values)
-            user = await session.execute(query)
-            return user
-
-    async def update(self, id: int, **values) -> None:
-        """Обновление пользователя."""
-        user = await self.get(id=id)
-        if not user:
-            user = await self.add(id=id, **values)
-            return
-        async with self.session.begin() as session:
-            query = sa.update(models.User)
-            query = query.filter_by(id=id)
-            query = query.values(**values)
-            await session.execute(query)
-
-    async def get(self, id: int) -> models.User:
-        """Получение пользователя по id."""
-        async with self.session.begin() as session:
-            query = sa.select(models.User).filter_by(id=id)
-            res = await session.execute(query)
-            return res.scalar()
-
-    async def list(self, **values) -> List[models.User]:
-        """Список пользователей."""
-        async with self.session.begin() as session:
-            query = sa.select(models.User)
-            query = query.filter_by(**values)
-            users = await session.execute(query)
-            return users.scalars().all()
-
-    async def delete(self, id: int) -> None:
-        """Удаление пользователя."""
-        async with self.session.begin() as session:
-            query = sa.delete(models.User).filter_by(id=id)
-            await session.execute(query)
+    table = models.User.__table__
 
 
 class ChannelRepository(Repository):
     """Репозиторий модели чата."""
 
-    async def add(self, **values: Any) -> None:
-        """Добавление чата."""
-        async with self.session.begin() as session:
-            query = sa.insert(models.Channel).values(**values)
-            await session.execute(query)
+    table = models.Channel.__table__
 
-    async def get(self, id: int) -> models.Channel:
-        """Получение чата по id."""
-        async with self.session.begin() as session:
-            query = sa.select(models.Channel).filter_by(id=id)
-            res = await session.execute(query)
-            return res.scalar()
 
-    async def list(self) -> List[models.Channel]:
-        """Список чатов."""
-        async with self.session.begin() as session:
-            query = sa.select(models.Channel)
-            users = await session.execute(query)
-            return users.scalars().all()
+class SearchItemRepository(Repository):
+    """Репозиторий модели фильтра поиска."""
 
-    async def delete(self, id: int) -> None:
-        """Удаление чата."""
-        async with self.session.begin() as session:
-            query = sa.delete(models.Channel)
-            query = query.filter_by(id=id)
-            await session.execute(query)
+    table = models.SearchItem.__table__

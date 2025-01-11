@@ -1,9 +1,9 @@
 """Базовые команды бота."""
-from enum import Enum
+from enum import StrEnum
 from telethon import events
 
 
-class Commands(str, Enum):
+class Commands(StrEnum):
     """Команды бота."""
 
     start = '/start'
@@ -11,9 +11,10 @@ class Commands(str, Enum):
     add_chat = '/add_chat'
     delete_chat = '/delete_chat'
     show_chats = '/show_chats'
-    add_grade = '/add_grade'
-    show_grade = '/show_grade'
-    delete_grade = '/delete_grade'
+    add_filter = '/add_filter'
+    show_my_filters = '/show_my_filters'
+    delete_filter = '/delete_filter'
+    delete_me = '/delete_me'
 
 
 @events.register(events.NewMessage(pattern=Commands.start))
@@ -34,7 +35,8 @@ async def help(event):
         f'{Commands.start} - Start me! \n'
         f'{Commands.help} - Справка \n'
         f'{Commands.show_chats} - Список чатов для поиска \n'
-        f'{Commands.add_grade} - Добавить грейд вакансии для поиска \n'
-        f'{Commands.show_grade} - Показать мой текущий грейд для поиска \n'
-        f'{Commands.delete_grade} - Удалить грейд и отписаться от рассылки'
+        f'{Commands.add_filter} - Добавить фильтр для поиска вакансий \n'
+        f'{Commands.show_my_filters} - Показать мои фильтры для поиска вакансий \n'
+        f'{Commands.delete_filter} - Удалить фильтр поиска вакансий\n'
+        f'{Commands.delete_me} - Удалить мои данные полностью'
     )
