@@ -1,4 +1,5 @@
 """Хэндлеры команд бота."""
+
 import logging
 from functools import partial
 
@@ -6,14 +7,14 @@ from telethon import Button, errors, events
 from telethon.tl.types import User as TLUser
 
 from bot import filters
+from bot.exceptions import exception_handler
+from bot.handlers.base import Commands
 from bot.schemas import (
     ChannelAdminState,
     Grades,
     Languages,
     UserState,
 )
-from bot.exceptions import exception_handler
-from bot.handlers.base import Commands
 
 FWD_TEXT = '**[Переслано из {chat_title}]**(https://t.me/c/{chat_id}/{message_id})\n\n{text}'
 
@@ -85,9 +86,7 @@ async def delete_chat(event: events.NewMessage.Event) -> None:
     await event.client.set_state(sender.id, ChannelAdminState.deleting_channel)
     await event.respond(
         'Выберите чат, который хотите удалить: ',
-        buttons=[
-            [Button.inline(f't.me/{chat.name}', data=chat.id)] for chat in chats
-        ]
+        buttons=[[Button.inline(f't.me/{chat.name}', data=chat.id)] for chat in chats],
     )
 
 
@@ -136,7 +135,7 @@ async def choose_language_callback(event: events.CallbackQuery.Event) -> None:
     language = event.data.decode()
     if language not in Languages._member_names_:
         raise ValueError('Недопустимое значение')
-    await event.client.set_state(sender.id, data={"language": language})
+    await event.client.set_state(sender.id, data={'language': language})
     await event.respond(
         'Выберите грейд: ',
         buttons=[
@@ -156,9 +155,9 @@ async def choose_grade_callback(event: events.CallbackQuery.Event) -> None:
         raise ValueError('Недопустимое значение грейда')
     sender = await event.get_sender()
     data = await event.client.get_state(sender.id)
-    language = data.get("language")
+    language = data.get('language')
     if not language:
-        raise ValueError("Ошибка, попробуйте еще раз")
+        raise ValueError('Ошибка, попробуйте еще раз')
     await event.client.create_searchitem(user_id=sender.id, grade=grade, language=language)
     await event.client.set_state(sender.id, None)
     await event.respond('Готово! Начинаем поиск.', buttons=Button.clear())
@@ -170,13 +169,10 @@ async def show_filters(event: events.NewMessage.Event) -> None:
     """Список фильтров пользователя."""
     sender = await event.get_sender()
     results = await event.client.show_user_filters(sender.id)
-    answer = '\n\n'.join([
-        f'{result.language.name} - {result.grade.name}'
-        for result in results
-    ])
+    answer = '\n\n'.join([f'{result.language.name} - {result.grade.name}' for result in results])
     if answer:
         return await event.respond(answer)
-    return await event.respond(f"Настройки пока не заполнены, введите команду {Commands.add_filter}")
+    return await event.respond(f'Настройки пока не заполнены, введите команду {Commands.add_filter}')
 
 
 @exception_handler
@@ -190,7 +186,7 @@ async def delete_filter(event: events.NewMessage.Event) -> None:
         'Выберите фильтр, который хотите удалить: ',
         buttons=[
             [Button.inline(f'{result.language.name} - {result.grade.name}', data=result.id)] for result in results
-        ]
+        ],
     )
 
 
@@ -202,7 +198,7 @@ async def delete_filter_callback(event: events.CallbackQuery.Event) -> None:
     sender = await event.get_sender()
     await event.client.delete_searchitem(searchitem_id=searchitem_id)
     await event.client.set_state(sender.id, None)
-    return await event.respond("Фильтр успешно удален")
+    return await event.respond('Фильтр успешно удален')
 
 
 @exception_handler
@@ -212,7 +208,7 @@ async def delete_me(event: events.NewMessage.Event) -> None:
     sender = await event.get_sender()
     await event.client.set_state(sender.id, UserState.deleting_me)
     await event.respond(
-        'Вы действительно хотите покинуть нас \U0001F97A?',
+        'Вы действительно хотите покинуть нас \U0001f97a?',
         buttons=[
             [Button.inline('Хочу остаться!', data='yes')],
             [Button.inline('Нет, исключите меня из рассылки', data='no')],

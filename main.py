@@ -1,4 +1,5 @@
 """Main."""
+
 import logging
 from logging import config
 
@@ -6,7 +7,6 @@ from telethon.sessions import StringSession
 
 from bot import handlers, settings
 from bot.client import Client
-
 
 bot = Client(
     session=settings.BOT_NAME,

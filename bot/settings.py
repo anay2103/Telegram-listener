@@ -11,7 +11,7 @@ BOT_NAME = os.getenv('BOT_NAME')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 CLIENT_SESSION = os.getenv('CLIENT_SESSION')
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_KEY = os.getenv('OPENAI_API_KEY')
 # количество отправляемых ботом сообщений в секунду
 MESSAGE_RATE_LIMIT = 20
 # период sleep после получения FloodWaitError
@@ -29,7 +29,4 @@ def build_postgres_uri():
 
 
 def build_redis_uri():
-    return 'redis://%s:%s' % (
-        os.getenv('REDIS_HOST', 'localhost'),
-        os.getenv('REDIS_PORT', '6379')
-    )
+    return 'redis://%s:%s' % (os.getenv('REDIS_HOST', 'localhost'), os.getenv('REDIS_PORT', '6379'))

@@ -1,0 +1,15 @@
+[project]
+requires-python = "==3.12"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = [
+    "I",   # isort
+    "E501",  # Add the `line-too-long` rule to the enforced rule set.
+]
+
+[tool.ruff.format]
+# Prefer single quotes over double quotes.
+quote-style = "single"

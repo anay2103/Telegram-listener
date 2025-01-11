@@ -1,17 +1,18 @@
 """Клиент Телеграма."""
+
 import json
 import logging
 from typing import Any, Coroutine, Optional
 
 from aiolimiter import AsyncLimiter
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from redis import asyncio as aioredis
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from telethon import TelegramClient, hints
 from telethon.tl import types
 
 from bot import settings
-from bot.service import TelegramService
 from bot.openai import OpenAIClient
+from bot.service import TelegramService
 
 
 class Client(OpenAIClient, TelegramService, TelegramClient):
@@ -64,7 +65,7 @@ class Client(OpenAIClient, TelegramService, TelegramClient):
         """Получение значения по ключу в Redis."""
         if not self.redis:
             self.redis_connect()
-        value = (await self.redis.get(key))  # type: ignore
+        value = await self.redis.get(key)  # type: ignore
         if value:
             return json.loads(value)
 

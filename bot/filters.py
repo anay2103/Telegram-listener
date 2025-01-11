@@ -1,4 +1,5 @@
 """Фильтры для сообщений Телеграма."""
+
 from typing import TYPE_CHECKING, Optional
 
 from telethon.events import common as events

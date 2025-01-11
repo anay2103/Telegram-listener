@@ -1,5 +1,4 @@
-from . import base
-from . import chats
+from . import base, chats
 
 BOT_HANDLERS = [
     base.help,

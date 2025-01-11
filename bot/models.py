@@ -1,4 +1,5 @@
 """Модели БД."""
+
 from datetime import datetime
 
 import sqlalchemy as sa
@@ -8,12 +9,12 @@ from sqlalchemy_utils import ChoiceType
 
 from bot import schemas
 
-
 Base = declarative_base()
 
 
 class TimeStampModel(Base):
     """Абстрактная модель со штампами времени."""
+
     __abstract__ = True
 
     created_at = sa.Column(sa.DateTime(True), server_default=func.now())
@@ -25,6 +26,7 @@ class TimeStampModel(Base):
 
 class User(TimeStampModel):
     """Модель пользователя."""
+
     __tablename__ = 'users'
 
     id = sa.Column(sa.BigInteger, primary_key=True, index=True, unique=True)
@@ -37,13 +39,14 @@ class SearchItem(TimeStampModel):
     __tablename__ = 'searchitems'
 
     id = sa.Column(sa.BigInteger, primary_key=True, autoincrement=True)
-    user_id = sa.Column(sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = sa.Column(sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     grade = sa.Column(ChoiceType(schemas.Grades), nullable=False)
     language = sa.Column(ChoiceType(schemas.Languages), nullable=False)
 
 
 class Channel(TimeStampModel):
     """Модель Телеграм-канала."""
+
     __tablename__ = 'channels'
 
     id = sa.Column(sa.BigInteger, primary_key=True, index=True, unique=True)

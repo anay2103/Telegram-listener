@@ -1,5 +1,7 @@
 """Базовые команды бота."""
+
 from enum import StrEnum
+
 from telethon import events
 
 
@@ -25,7 +27,7 @@ async def start(event):
         'Для справки набери /help. \n'
         'Мой исходный код здесь: '
         '[https://github.com/anay2103/Telegram-listener](https://github.com/anay2103/Telegram-listener)',
-        link_preview=False
+        link_preview=False,
     )
 
 

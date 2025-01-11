@@ -1,12 +1,12 @@
 import logging
-from typing import Optional
 from textwrap import dedent
+from typing import Optional
 
 import openai
 from openai import AsyncOpenAI
-
 from pydantic import BaseModel, Field
-from bot import settings, schemas
+
+from bot import schemas, settings
 
 
 class TextSummary(BaseModel):
@@ -18,7 +18,7 @@ class TextSummary(BaseModel):
     grade: list[schemas.Grades] = Field(default_factory=list)
 
 
-PROMPT = '''
+PROMPT = """
 Проанализируй текст и перескажи его содержание, используя предоставленную схему.
 Описание параметров схемы:
 is_vacancy: является ли текст вакансией, да или нет
@@ -38,7 +38,7 @@ grade: уровень должности, описанной в вакансии
 так как у специалистов уровня middle, senior, techlead заработная плата обычно выше.
 Если текст является вакансией, но при этом нельзя сделать заключение об уровне должности, укажи все варианты.
 Если текст не является вакансией, оставь в этом параметре пустой список.
-'''
+"""
 
 
 class OpenAIClient:
@@ -46,7 +46,7 @@ class OpenAIClient:
 
     def __init__(self, **kwargs):
         self.openai_cli = AsyncOpenAI(api_key=settings.OPENAI_KEY)
-        self.model = "gpt-4o-mini"
+        self.model = 'gpt-4o-mini'
         super().__init__(**kwargs)
 
     async def ai_request(self, text: str) -> TextSummary:
@@ -55,20 +55,17 @@ class OpenAIClient:
             completion = await self.openai_cli.beta.chat.completions.parse(
                 model=self.model,
                 temperature=0.2,
-                messages=[
-                    {"role": "system", "content": dedent(PROMPT)},
-                    {"role": "user", "content": text}
-                ],
+                messages=[{'role': 'system', 'content': dedent(PROMPT)}, {'role': 'user', 'content': text}],
                 response_format=TextSummary,
             )
             summary = completion.choices[0].message.parsed
-            logging.debug(f"Got text summary: {summary.model_dump()}")
+            logging.debug(f'Got text summary: {summary.model_dump()}')
             return summary
         except openai.RateLimitError as rate_err:
-            logging.error(f"Got {rate_err} for {text}")
+            logging.error(f'Got {rate_err} for {text}')
             # TODO: add email notification
         except openai.APIError as err:
-            logging.error(f"Got {err} for {text}")
+            logging.error(f'Got {err} for {text}')
         summary = TextSummary(is_vacancy=False)
-        logging.debug(f"Got text summary: {summary.model_dump()}")
+        logging.debug(f'Got text summary: {summary.model_dump()}')
         return summary

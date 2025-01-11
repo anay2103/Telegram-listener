@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class Grades (StrEnum):
+class Grades(StrEnum):
     """Грейды вакансий."""
 
     JUNIOR = 'junior'

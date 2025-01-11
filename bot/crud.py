@@ -1,4 +1,5 @@
 """Операции в БД."""
+
 from typing import Any, Optional, Sequence
 
 import sqlalchemy as sa
