@@ -10,13 +10,6 @@ services:
         POSTGRES_PASSWORD: postgres
         POSTGRES_DB: bot
 
-    redis:
-      image: redis:5-alpine
-      volumes:
-        - redis-data:/data
-      expose:
-        - 6379
-
     bot:
       build:
         context: .
@@ -26,7 +19,6 @@ services:
         - .:/app
       depends_on:
         - db
-        - redis
 
       environment:
         POSTGRES_HOST: db
@@ -40,4 +32,3 @@ services:
 
 volumes:
   pgdata:
-  redis-data:
