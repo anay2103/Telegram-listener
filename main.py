@@ -31,7 +31,6 @@ def main():
         for handler in handlers.BOT_HANDLERS:
             client.bot.add_event_handler(handler)
         client.bot.db_connect()
-        client.bot.redis_connect()
         client.bot.start(bot_token=settings.BOT_TOKEN)
         logging.info('Bot successfully started')
         client.loop.run_until_complete(client.disconnected)

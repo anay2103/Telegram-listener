@@ -26,7 +26,3 @@ def build_postgres_uri():
         os.getenv('POSTGRES_PORT', '5432'),
         os.getenv('POSTGRES_DB', 'bot'),
     )
-
-
-def build_redis_uri():
-    return 'redis://%s:%s' % (os.getenv('REDIS_HOST', 'localhost'), os.getenv('REDIS_PORT', '6379'))

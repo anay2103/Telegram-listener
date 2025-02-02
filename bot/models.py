@@ -51,3 +51,4 @@ class Channel(TimeStampModel):
 
     id = sa.Column(sa.BigInteger, primary_key=True, index=True, unique=True)
     name = sa.Column(sa.String, nullable=False, unique=True)
+    language = sa.Column(ChoiceType(schemas.Languages), nullable=False)

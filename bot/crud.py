@@ -29,13 +29,13 @@ class Repository:
         res = await self.conn.execute(query)
         return res.scalar_one_or_none()
 
-    async def update_or_create(self, id: int, **values) -> Any:
-        if item := await self.update(id=id, **values):
+    async def get_or_create(self, **values) -> Any:
+        if item := await self.get(**values):
             return item
-        return await self.add(id=id, **values)
+        return await self.add(**values)
 
-    async def get(self, id: int) -> Optional[Any]:
-        query = sa.select(self.table).filter_by(id=id)
+    async def get(self, **values) -> Optional[Any]:
+        query = sa.select(self.table).filter_by(**values)
         res = await self.conn.execute(query)
         return res.one_or_none()
 

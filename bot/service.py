@@ -10,10 +10,10 @@ class TelegramService:
 
     engine: AsyncEngine
 
-    async def add_chat(self, id: int, name: str) -> models.Channel:
+    async def add_chat(self, **values) -> models.Channel:
         """Добавление ТГ канала."""
         async with self.engine.begin() as conn:
-            return await crud.ChannelRepository(conn).add(id=id, name=name)
+            return await crud.ChannelRepository(conn).add(**values)
 
     async def show_chats(self) -> Sequence[models.Channel]:
         """Список доступных ТГ каналов."""
@@ -50,8 +50,8 @@ class TelegramService:
     async def create_searchitem(self, user_id: int, grade: str, language: str) -> models.SearchItem:
         """Создание пользовательского фильтра."""
         async with self.engine.begin() as conn:
-            await crud.UserRepository(conn).update_or_create(id=user_id)
-            return await crud.SearchItemRepository(conn).add(
+            await crud.UserRepository(conn).get_or_create(id=user_id)
+            return await crud.SearchItemRepository(conn).get_or_create(
                 user_id=user_id,
                 grade=grade.casefold(),
                 language=language.casefold(),

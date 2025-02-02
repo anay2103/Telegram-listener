@@ -1,11 +1,9 @@
 """Клиент Телеграма."""
 
-import json
 import logging
 from typing import Any, Coroutine, Optional
 
 from aiolimiter import AsyncLimiter
-from redis import asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from telethon import TelegramClient, hints
 from telethon.tl import types
@@ -25,7 +23,6 @@ class Client(OpenAIClient, TelegramService, TelegramClient):
     ) -> None:
         """Клиент может иметь атрибутом бот для пересылки сообщений пользователям."""
         self.bot = bot
-        self.redis: Optional[aioredis.Redis] = None
         self.engine: Optional[AsyncEngine] = None
         self.limiter = AsyncLimiter(settings.MESSAGE_RATE_LIMIT)
         self.flood_sleep_threshold = settings.FLOOD_WAIT_THRESHOLD
@@ -40,34 +37,6 @@ class Client(OpenAIClient, TelegramService, TelegramClient):
             logging.error(error, exc_info=True)
             raise
         self.engine = engine
-
-    def redis_connect(self) -> None:
-        """Подключение к Redis."""
-        uri = settings.build_redis_uri()
-        try:
-            redis = aioredis.from_url(uri, encoding='utf-8', decode_responses=True)
-        except Exception as error:
-            logging.error(error, exc_info=True)
-            raise
-        self.redis = redis
-
-    async def set_state(self, key: str, data: Optional[Any] = None) -> None:
-        """Добавление пары ключ-значение в Redis."""
-        if not self.redis:
-            self.redis_connect()
-        try:
-            await self.redis.set(key, json.dumps(data))  # type: ignore
-        except Exception as error:
-            logging.error(error, exc_info=True)
-            return
-
-    async def get_state(self, key: str) -> Any:
-        """Получение значения по ключу в Redis."""
-        if not self.redis:
-            self.redis_connect()
-        value = await self.redis.get(key)  # type: ignore
-        if value:
-            return json.loads(value)
 
     async def process_message(self, message: str) -> set[int]:
         """Обработка входящего сообщения:

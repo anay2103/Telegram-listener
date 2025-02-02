@@ -1,7 +1,6 @@
 """Хэндлеры команд бота."""
 
 import logging
-from functools import partial
 
 from telethon import Button, errors, events
 from telethon.tl.types import User as TLUser
@@ -9,14 +8,18 @@ from telethon.tl.types import User as TLUser
 from bot import filters
 from bot.exceptions import exception_handler
 from bot.handlers.base import Commands
-from bot.schemas import (
-    ChannelAdminState,
-    Grades,
-    Languages,
-    UserState,
-)
+from bot.schemas import Grades, Languages
 
 FWD_TEXT = '**[Переслано из {chat_title}]**(https://t.me/c/{chat_id}/{message_id})\n\n{text}'
+LANGUAGE_BUTTONS = [
+    [Button.inline('Python', data=Languages.PYTHON.name)],
+    [Button.inline('Golang', data=Languages.GO.name)],
+]
+GRADE_BUTTONS = [
+    [Button.inline('Junior', data=Grades.JUNIOR.name)],
+    [Button.inline('Middle', data=Grades.MIDDLE.name)],
+    [Button.inline('Senior', data=Grades.SENIOR.name)],
+]
 
 
 @events.register(events.NewMessage(func=filters.selected_chat))
@@ -55,26 +58,27 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
 async def add_chat(event: events.NewMessage.Event) -> None:
     """Добавление чата. Доступ только у суперюзера."""
     sender = await event.get_sender()
-    await event.respond('В ответном сообщении введите название Телеграм-чата')
-    await event.client.set_state(sender.id, ChannelAdminState.adding_channel)
-    event.message = None
-
-
-@exception_handler
-@events.register(events.NewMessage(func=partial(filters.filter_status, status=ChannelAdminState.adding_channel)))
-async def adding_chat_callback(event: events.NewMessage.Event) -> None:
-    """Коллбэк для добавления чата."""
-    chat_name = event.message.text
-    try:
-        chat_entity = await event.client.get_input_entity(chat_name)
-    except ValueError:
-        await event.respond(f'Чат не найден, проверьте название: {chat_name}')
-    else:
-        await event.client.add_chat(id=chat_entity.channel_id, name=chat_name)
-        await event.respond(f'Добавлен чат для поиска: {chat_name}')
-
-    sender = await event.get_sender()
-    await event.client.set_state(sender.id, None)
+    async with event.client.conversation(sender) as conv:
+        await conv.send_message(
+            'Выберите категорию чата: ',
+            buttons=LANGUAGE_BUTTONS,
+        )
+        event = await conv.wait_event(events.CallbackQuery(sender))
+        language = event.data.decode().lower()
+        await conv.send_message('В ответном сообщении введите название Телеграм-чата')
+        response = await conv.get_response()
+        chat_name = response.text
+        try:
+            chat_entity = await event.client.get_input_entity(chat_name)
+        except ValueError:
+            await conv.send_message(f'Чат не найден, проверьте название: {chat_name}')
+        else:
+            await event.client.add_chat(
+                id=chat_entity.channel_id,
+                language=language,
+                name=chat_name,
+            )
+            await event.respond(f'Добавлен чат для поиска: {chat_name}')
 
 
 @exception_handler
@@ -82,23 +86,16 @@ async def adding_chat_callback(event: events.NewMessage.Event) -> None:
 async def delete_chat(event: events.NewMessage.Event) -> None:
     """Удаление чата. Доступ только у суперюзера."""
     sender = await event.get_sender()
-    chats = await event.client.show_chats()
-    await event.client.set_state(sender.id, ChannelAdminState.deleting_channel)
-    await event.respond(
-        'Выберите чат, который хотите удалить: ',
-        buttons=[[Button.inline(f't.me/{chat.name}', data=chat.id)] for chat in chats],
-    )
-
-
-@exception_handler
-@events.register(events.CallbackQuery(func=partial(filters.filter_status, status=ChannelAdminState.deleting_channel)))
-async def deleting_chat_callback(event: events.CallbackQuery.Event) -> None:
-    """Коллбэк для удаления чата."""
-    chat_id = int(event.data.decode())
-    await event.client.delete_chat(chat_id=chat_id)
-    sender = await event.get_sender()
-    await event.client.set_state(sender.id, None)
-    await event.respond('Чат успешно удален')
+    async with event.client.conversation(sender) as conv:
+        chats = await event.client.show_chats()
+        await conv.send_message(
+            'Выберите чат, который хотите удалить: ',
+            buttons=[[Button.inline(f't.me/{chat.name}', data=chat.id)] for chat in chats],
+        )
+        event = await conv.wait_event(events.CallbackQuery(sender))
+        chat_id = int(event.data.decode())
+        await event.client.delete_chat(chat_id=chat_id)
+        await event.respond('Чат успешно удален')
 
 
 @exception_handler
@@ -106,61 +103,37 @@ async def deleting_chat_callback(event: events.CallbackQuery.Event) -> None:
 async def show_chats(event: events.NewMessage.Event) -> None:
     """Общий список чатов, по которым осуществляется поиск."""
     chats = await event.client.show_chats()
-    if chats:
-        return await event.respond(
-            '\n'.join([f't.me/{chat.name}' for chat in chats]),
-            link_preview=False,
-        )
-    await event.respond('Пока не добавлено ни одного чата')
+    if not chats:
+        return
+    by_langs = dict.fromkeys(Languages, '')
+    for chat in chats:
+        by_langs[chat.language] += f't.me/{chat.name}\n'
+    return await event.respond(
+        '\n'.join([f'{lang.upper()}:\n{chats}' for lang, chats in by_langs.items()]),
+        link_preview=False,
+    )
 
 
 @exception_handler
 @events.register(events.NewMessage(pattern=Commands.add_filter))
 async def add_filter(event: events.NewMessage.Event) -> None:
     """Добавление фильтра для поиска."""
-    await event.respond(
-        'Выберите язык для поиска вакансий: ',
-        buttons=[
-            [Button.inline('Python', data=Languages.PYTHON.name)],
-            [Button.inline('Golang', data=Languages.GO.name)],
-        ],
-    )
-
-
-@exception_handler
-@events.register(events.CallbackQuery(func=filters.choosing_language))
-async def choose_language_callback(event: events.CallbackQuery.Event) -> None:
-    """Добавление грейда для поиска."""
     sender = await event.get_sender()
-    language = event.data.decode()
-    if language not in Languages._member_names_:
-        raise ValueError('Недопустимое значение')
-    await event.client.set_state(sender.id, data={'language': language})
-    await event.respond(
-        'Выберите грейд: ',
-        buttons=[
-            [Button.inline('Junior', data=Grades.JUNIOR.name)],
-            [Button.inline('Middle', data=Grades.MIDDLE.name)],
-            [Button.inline('Senior', data=Grades.SENIOR.name)],
-        ],
-    )
-
-
-@exception_handler
-@events.register(events.CallbackQuery(func=filters.choosing_grade))
-async def choose_grade_callback(event: events.CallbackQuery.Event) -> None:
-    """Коллбэк для выбора грейда."""
-    grade = event.data.decode()
-    if grade not in Grades._member_names_:
-        raise ValueError('Недопустимое значение грейда')
-    sender = await event.get_sender()
-    data = await event.client.get_state(sender.id)
-    language = data.get('language')
-    if not language:
-        raise ValueError('Ошибка, попробуйте еще раз')
-    await event.client.create_searchitem(user_id=sender.id, grade=grade, language=language)
-    await event.client.set_state(sender.id, None)
-    await event.respond('Готово! Начинаем поиск.', buttons=Button.clear())
+    async with event.client.conversation(sender) as conv:
+        await conv.send_message(
+            'Выберите язык для поиска вакансий: ',
+            buttons=LANGUAGE_BUTTONS,
+        )
+        event = await conv.wait_event(events.CallbackQuery(sender))
+        language = event.data.decode().lower()
+        await event.respond(
+            'Выберите грейд: ',
+            buttons=GRADE_BUTTONS,
+        )
+        event = await conv.wait_event(events.CallbackQuery(sender))
+        grade = event.data.decode()
+        await event.client.create_searchitem(user_id=sender.id, grade=grade, language=language)
+        await event.respond('Готово! Начинаем поиск.')
 
 
 @exception_handler
@@ -180,25 +153,18 @@ async def show_filters(event: events.NewMessage.Event) -> None:
 async def delete_filter(event: events.NewMessage.Event) -> None:
     """Удаление фильтра для поиска."""
     sender = await event.get_sender()
-    await event.client.set_state(sender.id, UserState.deleting_filter)
-    results = await event.client.show_user_filters(sender.id)
-    await event.respond(
-        'Выберите фильтр, который хотите удалить: ',
-        buttons=[
-            [Button.inline(f'{result.language.name} - {result.grade.name}', data=result.id)] for result in results
-        ],
-    )
-
-
-@exception_handler
-@events.register(events.CallbackQuery(func=partial(filters.filter_status, status=UserState.deleting_filter)))
-async def delete_filter_callback(event: events.CallbackQuery.Event) -> None:
-    """Коллбэк для удаления фильтра."""
-    searchitem_id = int(event.data.decode())
-    sender = await event.get_sender()
-    await event.client.delete_searchitem(searchitem_id=searchitem_id)
-    await event.client.set_state(sender.id, None)
-    return await event.respond('Фильтр успешно удален')
+    async with event.client.conversation(sender) as conv:
+        results = await event.client.show_user_filters(sender.id)
+        await event.respond(
+            'Выберите фильтр, который хотите удалить: ',
+            buttons=[
+                [Button.inline(f'{result.language.name} - {result.grade.name}', data=result.id)] for result in results
+            ],
+        )
+        event = await conv.wait_event(events.CallbackQuery(sender))
+        searchitem_id = int(event.data.decode())
+        await event.client.delete_searchitem(searchitem_id=searchitem_id)
+        return await event.respond('Фильтр успешно удален')
 
 
 @exception_handler
@@ -206,22 +172,17 @@ async def delete_filter_callback(event: events.CallbackQuery.Event) -> None:
 async def delete_me(event: events.NewMessage.Event) -> None:
     """Удаление пользователя."""
     sender = await event.get_sender()
-    await event.client.set_state(sender.id, UserState.deleting_me)
-    await event.respond(
-        'Вы действительно хотите покинуть нас \U0001f97a?',
-        buttons=[
-            [Button.inline('Хочу остаться!', data='yes')],
-            [Button.inline('Нет, исключите меня из рассылки', data='no')],
-        ],
-    )
-
-
-@exception_handler
-@events.register(events.CallbackQuery(func=partial(filters.filter_status, status=UserState.deleting_me)))
-async def deleting_me_callback(event: events.CallbackQuery.Event) -> None:
-    response = event.data.decode()
-    sender = await event.get_sender()
-    if response == 'no':
-        await event.client.delete_user(user_id=sender.id)
-        return await event.respond('Вы успешно исключены из списка рассылки. Желаем удачи!', buttons=Button.clear())
-    await event.respond('Ура! Вы решили остаться с нами!', buttons=Button.clear())
+    async with event.client.conversation(sender) as conv:
+        await event.respond(
+            'Вы действительно хотите покинуть нас \U0001f97a?',
+            buttons=[
+                [Button.inline('Хочу остаться!', data='yes')],
+                [Button.inline('Нет, исключите меня из рассылки', data='no')],
+            ],
+        )
+        event = await conv.wait_event(events.CallbackQuery(sender))
+        response = event.data.decode()
+        if response == 'no':
+            await event.client.delete_user(user_id=sender.id)
+            return await event.respond('Вы успешно исключены из списка рассылки. Желаем удачи!')
+        await event.respond('Ура! Вы решили остаться с нами!')
