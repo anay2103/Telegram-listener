@@ -48,7 +48,8 @@ class Channel(TimeStampModel):
     """Модель Телеграм-канала."""
 
     __tablename__ = 'channels'
+    __table_args__ = (sa.PrimaryKeyConstraint('id', 'language'),)
 
-    id = sa.Column(sa.BigInteger, primary_key=True, index=True, unique=True)
-    name = sa.Column(sa.String, nullable=False, unique=True)
+    id = sa.Column(sa.BigInteger, nullable=False)
+    name = sa.Column(sa.String, nullable=False)
     language = sa.Column(ChoiceType(schemas.Languages), nullable=False)

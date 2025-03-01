@@ -13,7 +13,7 @@ from bot.schemas import Grades, Languages
 FWD_TEXT = '**[Переслано из {chat_title}]**(https://t.me/c/{chat_id}/{message_id})\n\n{text}'
 LANGUAGE_BUTTONS = [
     [Button.inline('Python', data=Languages.PYTHON.name)],
-    [Button.inline('Golang', data=Languages.GO.name)],
+    [Button.inline('Golang', data=Languages.GOLANG.name)],
 ]
 GRADE_BUTTONS = [
     [Button.inline('Junior', data=Grades.JUNIOR.name)],
@@ -155,6 +155,8 @@ async def delete_filter(event: events.NewMessage.Event) -> None:
     sender = await event.get_sender()
     async with event.client.conversation(sender) as conv:
         results = await event.client.show_user_filters(sender.id)
+        if not results:
+            return await event.respond(f'Настройки пока не заполнены, введите команду {Commands.add_filter}')
         await event.respond(
             'Выберите фильтр, который хотите удалить: ',
             buttons=[

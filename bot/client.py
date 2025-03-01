@@ -44,7 +44,7 @@ class Client(OpenAIClient, TelegramService, TelegramClient):
         запрос параметров сообщения у ИИ и поиск пользователей с заданными параметрами.
         """
         summary = await self.ai_request(message)
-        match = await self.get_searchitems(languages=summary.language, grades=summary.grade)
+        match = await self.get_searchitems(languages=summary.languages_lower, grades=summary.grades)
         return set(match)
 
     async def send_message(

@@ -13,5 +13,5 @@ class Grades(StrEnum):
 class Languages(StrEnum):
     """Язык программирования."""
 
-    GO = 'go'
+    GOLANG = 'golang'
     PYTHON = 'python'

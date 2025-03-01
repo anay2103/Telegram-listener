@@ -20,7 +20,8 @@ def exception_handler(func: Callable) -> Callable:
             res = await func(event)
         except ValidationError:
             await event.respond(f'Недопустимое значение для {event.message.text}')
-        except TimeoutError:
+        except TimeoutError as t_err:
+            logging.info(t_err, exc_info=True)
             await event.respond('Недождался ответа...:( Попробуйте заново.')
         except Exception as err:
             await event.respond('Упс...Кажется у нас авария. Все починим!')
