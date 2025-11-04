@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 async def is_superuser(event: events.EventCommon) -> bool:
     """Фильтр по суперюзеру."""
-    user = await event.client.get_user(user_id=event.sender.id)
+    user = await event.client.user_service.filter_item(id=event.sender.id)
     return bool(user and user.is_superuser)
 
 
@@ -23,5 +23,4 @@ async def selected_chat(event: events.EventCommon) -> Optional['models.Channel']
         chat_id = event.peer_id.chat_id
     else:
         chat_id = event.peer_id.channel_id
-
-    return await event.client.get_chat(chat_id=abs(chat_id))
+    return await event.client.channel_service.filter_item(id=abs(chat_id))

@@ -1,9 +1,9 @@
 """Операции в БД."""
 
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot import models
 
@@ -11,60 +11,65 @@ from bot import models
 class Repository:
     """Базовый класс для операций в БД."""
 
-    table: sa.TableClause
+    model: models.SQLModelT
 
-    def __init__(self, conn: AsyncConnection):
-        self.conn = conn
+    def __init__(self, session: AsyncSession):
+        self.session = session
 
     async def add(self, **values: Any) -> Any:
-        query = sa.insert(self.table)
-        query = query.values(**values).returning(self.table)
-        res = await self.conn.execute(query)
-        return res.scalar()
+        obj = self.model(**values)
+        self.session.add(obj)
 
     async def update(self, id: int, **values) -> Any:
-        query = sa.update(self.table)
+        query = sa.update(self.model)
         query = query.filter_by(id=id)
-        query = query.values(**values).returning(self.table)
-        res = await self.conn.execute(query)
+        query = query.values(**values).returning(self.model)
+        res = await self.session.execute(query)
         return res.scalar_one_or_none()
 
-    async def get_or_create(self, **values) -> Any:
-        if item := await self.get(**values):
+    async def get_or_create(self, **filters) -> Any:
+        if item := await self.filter_one(**filters):
             return item
-        return await self.add(**values)
+        return await self.add(**filters)
 
-    async def get(self, **values) -> Optional[Any]:
-        query = sa.select(self.table).filter_by(**values)
-        res = await self.conn.execute(query)
-        return res.one_or_none()
+    async def filter_one(self, **filters) -> Sequence[Any]:
+        query = sa.select(self.model)
+        query = query.filter_by(**filters)
+        items = await self.session.scalars(query)
+        return items.one_or_none()
 
     async def list(self, *whereclauses) -> Sequence[Any]:
         """Получение списка объектов."""
-        query = sa.select(self.table)
+        query = sa.select(self.model)
         query = query.where(*whereclauses)
-        items = await self.conn.execute(query)
+        items = await self.session.scalars(query)
         return items.all()
 
     async def delete(self, id: int) -> None:
         """Удаление."""
-        query = sa.delete(self.table).filter_by(id=id)
-        await self.conn.execute(query)
+        query = sa.delete(self.model).filter_by(id=id)
+        await self.session.execute(query)
 
 
 class UserRepository(Repository):
     """Репозиторий модели пользователя."""
 
-    table = models.User.__table__
+    model = models.User
 
 
 class ChannelRepository(Repository):
     """Репозиторий модели чата."""
 
-    table = models.Channel.__table__
+    model = models.Channel
 
 
 class SearchItemRepository(Repository):
     """Репозиторий модели фильтра поиска."""
 
-    table = models.SearchItem.__table__
+    model = models.SearchItem
+
+
+class CVRepository(Repository):
+    """Репозиторий модели резюме."""
+
+    model = models.CV

@@ -20,6 +20,7 @@ GRADE_BUTTONS = [
     [Button.inline('Middle', data=Grades.MIDDLE.name)],
     [Button.inline('Senior', data=Grades.SENIOR.name)],
 ]
+CV_BUTTON = [Button.inline('Создать сопроводительное письмо')]
 
 
 @events.register(events.NewMessage(func=filters.selected_chat))
@@ -73,7 +74,7 @@ async def add_chat(event: events.NewMessage.Event) -> None:
         except ValueError:
             await conv.send_message(f'Чат не найден, проверьте название: {chat_name}')
         else:
-            await event.client.add_chat(
+            await event.client.channel_service.add_item(
                 id=chat_entity.channel_id,
                 language=language,
                 name=chat_name,
@@ -87,14 +88,14 @@ async def delete_chat(event: events.NewMessage.Event) -> None:
     """Удаление чата. Доступ только у суперюзера."""
     sender = await event.get_sender()
     async with event.client.conversation(sender) as conv:
-        chats = await event.client.show_chats()
+        chats = await event.client.channel_service.get_list()
         await conv.send_message(
             'Выберите чат, который хотите удалить: ',
             buttons=[[Button.inline(f't.me/{chat.name}', data=chat.id)] for chat in chats],
         )
         event = await conv.wait_event(events.CallbackQuery(sender))
         chat_id = int(event.data.decode())
-        await event.client.delete_chat(chat_id=chat_id)
+        await event.client.channel_service.delete_item(_id=chat_id)
         await event.respond('Чат успешно удален')
 
 
@@ -102,7 +103,7 @@ async def delete_chat(event: events.NewMessage.Event) -> None:
 @events.register(events.NewMessage(pattern=Commands.show_chats))
 async def show_chats(event: events.NewMessage.Event) -> None:
     """Общий список чатов, по которым осуществляется поиск."""
-    chats = await event.client.show_chats()
+    chats = await event.client.channel_service.get_list()
     if not chats:
         return
     by_langs = dict.fromkeys(Languages, '')
@@ -132,7 +133,7 @@ async def add_filter(event: events.NewMessage.Event) -> None:
         )
         event = await conv.wait_event(events.CallbackQuery(sender))
         grade = event.data.decode()
-        await event.client.create_searchitem(user_id=sender.id, grade=grade, language=language)
+        await event.client.searchitems_service.create_searchitem(user_id=sender.id, grade=grade, language=language)
         await event.respond('Готово! Начинаем поиск.')
 
 
@@ -141,7 +142,7 @@ async def add_filter(event: events.NewMessage.Event) -> None:
 async def show_filters(event: events.NewMessage.Event) -> None:
     """Список фильтров пользователя."""
     sender = await event.get_sender()
-    results = await event.client.show_user_filters(sender.id)
+    results = await event.client.searchitems_service.show_user_filters(sender.id)
     answer = '\n\n'.join([f'{result.language.name} - {result.grade.name}' for result in results])
     if answer:
         return await event.respond(answer)
@@ -154,7 +155,7 @@ async def delete_filter(event: events.NewMessage.Event) -> None:
     """Удаление фильтра для поиска."""
     sender = await event.get_sender()
     async with event.client.conversation(sender) as conv:
-        results = await event.client.show_user_filters(sender.id)
+        results = await event.client.searchitems_service.show_user_filters(sender.id)
         if not results:
             return await event.respond(f'Настройки пока не заполнены, введите команду {Commands.add_filter}')
         await event.respond(
@@ -165,7 +166,7 @@ async def delete_filter(event: events.NewMessage.Event) -> None:
         )
         event = await conv.wait_event(events.CallbackQuery(sender))
         searchitem_id = int(event.data.decode())
-        await event.client.delete_searchitem(searchitem_id=searchitem_id)
+        await event.client.searchitems_service.delete_item(_id=searchitem_id)
         return await event.respond('Фильтр успешно удален')
 
 
@@ -185,6 +186,6 @@ async def delete_me(event: events.NewMessage.Event) -> None:
         event = await conv.wait_event(events.CallbackQuery(sender))
         response = event.data.decode()
         if response == 'no':
-            await event.client.delete_user(user_id=sender.id)
+            await event.client.user_service.delete_item(_id=sender.id)
             return await event.respond('Вы успешно исключены из списка рассылки. Желаем удачи!')
         await event.respond('Ура! Вы решили остаться с нами!')
