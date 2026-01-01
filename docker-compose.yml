@@ -11,10 +11,9 @@ services:
         POSTGRES_DB: bot
 
     bot:
-      build:
-        context: .
+      image: yanakarausheva/telegramlistener:latest
       env_file: .env
-      restart: always
+      restart: unless-stopped
       volumes:
         - .:/app
       depends_on:
