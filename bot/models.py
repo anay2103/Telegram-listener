@@ -1,15 +1,19 @@
 """Модели БД."""
 
 from datetime import datetime
+from typing import TypeVar
 
 import sqlalchemy as sa
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import expression, func
+from sqlalchemy_file import FileField
 from sqlalchemy_utils import ChoiceType
 
 from bot import schemas
 
 Base = declarative_base()
+
+SQLModelT = TypeVar('SQLModelT', bound=Base)
 
 
 class TimeStampModel(Base):
@@ -53,3 +57,14 @@ class Channel(TimeStampModel):
     id = sa.Column(sa.BigInteger, nullable=False)
     name = sa.Column(sa.String, nullable=False)
     language = sa.Column(ChoiceType(schemas.Languages), nullable=False)
+
+
+class CV(TimeStampModel):
+    """Модель резюме."""
+
+    __tablename__ = 'cv'
+
+    id = sa.Column(sa.BigInteger, primary_key=True, autoincrement=True)
+    user_id = sa.Column(sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    name = sa.Column(sa.String(64), unique=True, nullable=False)
+    content = sa.Column(FileField, nullable=False)

@@ -7,6 +7,7 @@ from telethon.sessions import StringSession
 
 from bot import handlers, settings
 from bot.client import Client
+from bot.filestorage import init_filestorage
 
 bot = Client(
     session=settings.BOT_NAME,
@@ -26,7 +27,7 @@ def main():
 
     config.fileConfig('logging.conf')
     with client:
-        client.db_connect()
+        init_filestorage()
         client.add_event_handler(handlers.chats.chat_listener)
         for handler in handlers.BOT_HANDLERS:
             client.bot.add_event_handler(handler)
