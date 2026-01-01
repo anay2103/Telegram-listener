@@ -1,5 +1,7 @@
 ## Telegram Listener
 
+[![Telegram listener bot](https://github.com/anay2103/Telegram-listener/actions/workflows/main.yml/badge.svg)](https://github.com/anay2103/Telegram-listener/actions/workflows/main.yml)
+
 Приложение на основе библиотеки [Telethon](https://github.com/LonamiWebs/Telethon) для поиска ИТ-вакансий в Телеграме.
 
 Запускает 2 Телеграм-клиента: бота и клиента с номером телефона.
