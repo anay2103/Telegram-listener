@@ -1,0 +1,76 @@
+Название: {{ vacancy.name }}
+Регион: {{ vacancy.area.name }}
+Работодатель: {{ vacancy.employer.name }}
+{%- if vacancy.department %}
+{{ vacancy.department.name }}
+{%- endif %}
+Уровень дохода:
+{%- if vacancy.salary_range -%}
+{%- if vacancy.salary_range.from_ -%}
+от {{ vacancy.salary_range.from_ }}
+{%- endif %}
+{%- if vacancy.salary_range.to -%}
+до {{ vacancy.salary_range.to }}
+{%- endif %}
+{{ vacancy.salary_range.currency }}
+{%- if vacancy.salary_range.gross %}
+до вычета налогов,
+{%- else %}
+после вычета налогов,
+{%- endif -%}
+{{ vacancy.salary_range.mode.name }}
+{%- else -%}
+уровень дохода не указан
+{%- endif %}
+Опыт работы:
+{%- if vacancy.experience -%}
+{{ vacancy.experience.name }}
+{%- else %}
+не указано
+{%- endif %}
+Тип занятости:
+{%- if vacancy.employment_form -%}
+{{ vacancy.employment_form.name }}
+{%- else %}
+не указано
+{%- endif %}
+График:
+{%- if vacancy.work_schedule_by_days -%}
+{%- for item in vacancy.work_schedule_by_days -%}
+{{ item.name }}
+{%- endfor %}
+{%- else -%}
+не указано
+{%- endif %}
+Рабочие часы:
+{%- if vacancy.working_hours -%}
+{%- for item in vacancy.working_hours -%}
+{{ item.name }}
+{%- endfor %}
+{%- else %}
+не указано
+{%- endif %}
+Формат работы:
+{%- if vacancy.work_format -%}
+{%- for item in vacancy.work_format -%}
+{{ item.name }}
+{%- endfor %}
+{%- else -%}
+не указано
+{%- endif %}
+Адрес:
+{%- if vacancy.address -%}
+{{ vacancy.address.raw }}
+{%- else -%}
+не указано
+{%- endif %}
+Описание:
+{{- vacancy.description }}
+Ключевые навыки:
+{%- if vacancy.key_skills %}
+{%- for item in vacancy.key_skills %}
+{{ item.name }}
+{%- endfor %}
+{%- else -%}
+не указано
+{%- endif %}

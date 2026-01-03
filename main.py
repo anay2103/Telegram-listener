@@ -26,8 +26,8 @@ def main():
     """Запуск бота и реального клиента. Бот общается с пользователями, клиент слушает чаты."""
 
     config.fileConfig('logging.conf')
+    init_filestorage()
     with client:
-        init_filestorage()
         client.add_event_handler(handlers.chats.chat_listener)
         for handler in handlers.BOT_HANDLERS:
             client.bot.add_event_handler(handler)

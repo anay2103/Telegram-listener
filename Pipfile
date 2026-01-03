@@ -17,12 +17,16 @@ asyncpg = "~=0.29.0"
 aiolimiter = "==1.0.0"
 alembic = "==1.9.1"
 openai = "~=1.59.0"
+beautifulsoup4 = "~=4.12.2"
+chromadb = "~=1.0.20"
+celery = {version = "~=5.6.1", extras =["redis"]}
+jinja2 = "~=3.1.2"
 SQLAlchemy = {version = "~=2.0.36", extras = ["asyncio"]}
 sqlalchemy-file = "~=0.6.0"
 sqlalchemy-utils = "~=0.41.2"
 apache-libcloud = "~=3.8.0"
 fasteners = "~=0.20"
-pydantic = "==2.3.0"
+pydantic = "~=2.3.0"
 python-dotenv = "==1.0"
 
 [requires]
