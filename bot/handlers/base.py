@@ -20,6 +20,7 @@ class Commands(StrEnum):
     show_my_filters = '/show_my_filters'
     delete_filter = '/delete_filter'
     delete_me = '/delete_me'
+    add_job_description = '/add_job_description'
 
 
 @events.register(events.NewMessage(pattern=Commands.start))

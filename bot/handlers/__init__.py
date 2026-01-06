@@ -1,4 +1,4 @@
-from . import base, chats, resumes
+from . import base, chats, prompts, resumes
 
 BOT_HANDLERS = [
     base.help,
@@ -13,4 +13,5 @@ BOT_HANDLERS = [
     resumes.add_resume,
     resumes.get_resume,
     resumes.delete_resume,
+    prompts.add_job_description,
 ]

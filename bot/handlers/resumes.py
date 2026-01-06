@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy_file.storage import StorageManager
 from telethon import Button, events
 from telethon.tl.types import DocumentAttributeFilename
@@ -17,10 +18,13 @@ async def add_resume(event: events.NewMessage.Event) -> None:
         filename = response.media.document.attributes[0].file_name
         content_type = response.media.document.mime_type
         content = await event.client.download_media(response, bytes)
-        await event.client.cv_service.add_item(
-            user_id=sender.id, filename=filename, content=content, content_type=content_type
-        )
-    await event.respond('Резюме добавлено!')
+        try:
+            await event.client.cv_service.add_item(
+                user_id=sender.id, filename=filename, content=content, content_type=content_type
+            )
+        except IntegrityError:
+            return await event.respond('Резюме с таким названием уже существует')
+    return await event.respond('Резюме добавлено!')
 
 
 @exception_handler

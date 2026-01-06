@@ -1,7 +1,12 @@
 """Сервис для работы с API hh.ru."""
 
+from typing import TYPE_CHECKING
+
 from bot.hh.client import HHClient
-from bot.hh.schemas import Document, VacancyDetailResponse, VacancyListResponse
+from bot.hh.schemas import VacancyDetailResponse, VacancyListResponse
+
+if TYPE_CHECKING:
+    from bot.hh.schemas import LlamaDocument
 
 
 class HHService:
@@ -47,7 +52,7 @@ class HHService:
         )
         return VacancyListResponse(**response)
 
-    async def get_vacancy_detail(self, vacancy_id: str) -> Document:
+    async def get_vacancy_detail(self, vacancy_id: str) -> 'LlamaDocument':
         """Получение детальной информации о вакансии.
 
         Args:

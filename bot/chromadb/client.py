@@ -13,10 +13,10 @@ def get_client() -> ClientAPI:
     return client
 
 
-def get_chromadb_collection() -> chromadb.Collection:
+def get_chromadb_collection(name: str) -> chromadb.Collection:
     client = get_client()
     return client.get_or_create_collection(
-        name=settings.CHROMA_COLLECTION,
+        name=name,
         embedding_function=OpenAIEmbeddingFunction(  # type: ignore
             model_name=settings.CHROMA_EMBEDDING_MODEL,
             api_key_env_var=API_KEY_ENV_VAR,

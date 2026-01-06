@@ -3,11 +3,13 @@ import logging
 from aiolimiter import AsyncLimiter
 from celery import shared_task
 
-from bot.chromadb.client import get_chromadb_collection
-from bot.chromadb.service import ChromaService
+from bot import settings
+from bot.client import get_tg_bot
 from bot.hh.client import HHClient
 from bot.hh.service import HHService
-from celery_app.base import AsyncTask
+from bot.openai.agent import Agent
+
+from .base import AsyncTask
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +19,10 @@ async def poll_hh():
     """Опрос API hh.ru и сохранение вакансий в ChromaDB."""
     async with HHClient() as hh_client:
         hh_service = HHService(hh_client)
-        chroma_collection = get_chromadb_collection()
-        chroma_service = ChromaService(chroma_collection)
-        limiter = AsyncLimiter(2, 1)
-
+        bot = get_tg_bot()
+        bot.start(bot_token=settings.BOT_TOKEN)
+        logging.info('Bot successfully started')
+        limiter = AsyncLimiter(1, 1)
         logger.info('Fetching vacancies from hh.ru')
         page, total_pages, total_items = 0, 1, 0
         while page <= total_pages:
@@ -30,31 +32,22 @@ async def poll_hh():
             page += 1
             logger.info(f'Found {total_items} total vacancies across {total_pages} pages')
 
-            ids = []
-            texts = []
-            metadatas = []
+            documents = []
 
             for vacancy in vacancies_response.items:
                 async with limiter:
                     try:
                         document = await hh_service.get_vacancy_detail(vacancy.id)
-                        ids.append(document.id)
-                        texts.append(document.text)
-                        metadatas.append(document.metadata)
+                        documents.append(document)
                         logger.debug(f'Processed vacancy {vacancy.id}')
                     except Exception as e:
                         logger.error(f'Error processing vacancy {vacancy.id}: {e}', exc_info=True)
                         continue
 
-            # Сохраняем все документы в ChromaDB
-            if ids:
-                chroma_service.upsert(
-                    ids=ids,
-                    documents=texts,
-                    metadatas=metadatas,
-                )
-                logger.info(f'Successfully saved {len(ids)} documents to ChromaDB')
-            else:
-                logger.warning('No documents to save')
+            logger.info('building index from texts...')
+            async with bot:
+                agent = Agent(documents=documents, bot=bot)
+                await agent.run()
+            logger.info(f'Successfully saved {len(agent.documents)} documents to ChromaDB')
 
         logger.info(f'Collected {total_items} vacancies from all pages')

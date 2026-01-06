@@ -1,17 +1,18 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
+from llama_index.core import Document as LlamaDocument
 from pydantic import BaseModel, Field, field_serializer, field_validator
 
 template = Environment(loader=FileSystemLoader('bot/templates')).get_template('vacancy.txt')
 
 
-class Document(BaseModel):
-    id: str
-    text: str
-    metadata: dict[str, Any]
+# class Document(BaseModel):
+#     id: str
+#     text: str
+#     metadata: dict[str, Any]
 
 
 class Vacancy(BaseModel):
@@ -79,11 +80,11 @@ class VacancyDetailResponse(BaseModel):
     @field_validator('description')
     @classmethod
     def validate_description(cls, value: str) -> str:
-        return BeautifulSoup(value).get_text()
+        return BeautifulSoup(value, features='html.parser').get_text()
 
     @classmethod
-    def from_source(cls, data: dict) -> Document:
+    def from_source(cls, data: dict) -> LlamaDocument:
         vacancy = cls(**data)
         text = template.render(vacancy=vacancy)
         metadata = VacancyMetadataModel(**data).model_dump()
-        return Document(id=metadata['id'], text=text, metadata=metadata)
+        return LlamaDocument(doc_id=metadata['id'], text=text, metadata=metadata)
