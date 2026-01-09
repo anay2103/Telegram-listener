@@ -81,4 +81,8 @@ class CVService(BaseTelegramService):
             return await self.repository(session).add(user_id=user_id, content=file, name=filename)
 
     async def show_user_resumes(self, user_id: int) -> Sequence[models.SearchItem]:
-        return await self.get_list(models.CV.user_id == user_id)
+        return await self.get_list(models.Resume.user_id == user_id)
+
+
+class VacancyService(BaseTelegramService):
+    repository = crud.VacancyRepository

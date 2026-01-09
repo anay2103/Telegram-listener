@@ -28,7 +28,7 @@ class VacancyListResponse(BaseModel):
 
 
 class NameModel(BaseModel):
-    id: str
+    name: str
 
 
 class SalaryRangeModel(BaseModel):
@@ -53,7 +53,7 @@ class VacancyMetadataModel(BaseModel):
 
     @field_serializer('type', return_type=str)
     def validate_type(self, value: NameModel) -> str:
-        return value.id
+        return value.name
 
     @field_serializer('published_at', 'created_at', return_type=str)
     def validate_time(self, value: datetime) -> str:
@@ -66,6 +66,7 @@ class VacancyDetailResponse(BaseModel):
     description: str
     employer: NameModel
     area: NameModel
+    url: str = Field(validation_alias='alternate_url')
     salary_range: Optional[SalaryRangeModel] = None
     address: Optional[VacancyAddressModel] = None
     experience: Optional[NameModel] = None
@@ -73,9 +74,7 @@ class VacancyDetailResponse(BaseModel):
     working_hours: list[NameModel] = []
     work_format: list[NameModel] = []
     employment_form: Optional[NameModel] = None
-    department: Optional[NameModel] = None
-    description: str
-    key_sklls: list[NameModel] = []
+    key_skills: list[NameModel] = []
 
     @field_validator('description')
     @classmethod

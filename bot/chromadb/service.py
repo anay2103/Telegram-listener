@@ -5,6 +5,8 @@ from typing import Any, List, Optional
 import chromadb
 from chromadb import GetResult
 
+from bot.chromadb.client import get_chromadb_collection
+
 
 class ChromaService:
     """Сервис для работы с коллекцией ChromaDB."""
@@ -70,3 +72,8 @@ class ChromaService:
             kwargs['include'] = include
 
         return self.collection.get(**kwargs)
+
+
+def get_chromadb_service(collection_name: str) -> ChromaService:
+    collection = get_chromadb_collection(name=collection_name)
+    return ChromaService(collection)

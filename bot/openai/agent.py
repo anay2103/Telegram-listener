@@ -1,83 +1,107 @@
-from collections import defaultdict
+import logging
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
-from llama_index.core import StorageContext, VectorStoreIndex
-from llama_index.core.agent.workflow import FunctionAgent
+from jinja2 import Environment, FileSystemLoader
+from llama_index.core import PromptTemplate, StorageContext, VectorStoreIndex, get_response_synthesizer
+from llama_index.core.postprocessor import LLMRerank
+from llama_index.core.vector_stores import (
+    FilterOperator,
+    MetadataFilter,
+    MetadataFilters,
+)
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from sqlalchemy.exc import IntegrityError
 
-from bot import settings
+from bot import models, settings
 from bot.chromadb import ChromaService
 from bot.chromadb.client import get_chromadb_collection
-from bot.chromadb.schemas import GetResultProxy, convert_from_get_result, convert_to_get_result
+from bot.chromadb.schemas import convert_from_get_result
 
 from .prompts import CHOOSE_VACANCY_PROMPT
 from .schemas import HHAgentOutput
 
+if TYPE_CHECKING:
+    from bot.client import Client
+
+logger = logging.getLogger(__name__)
+
 
 class Agent:
-    def __init__(self, documents: list, bot):
+    def __init__(self, documents: list, bot: 'Client'):
         self.bot = bot
         self.documents = documents
         self.doc_ids = [d.doc_id for d in self.documents]
-        self.vacancies_service = self.get_chromadb_service(settings.CHROMA_VACANCIES_COLLECTION)
+        self.chroma_vacancies_service = self.get_chromadb_service(settings.CHROMA_VACANCIES_COLLECTION)
         self.queries_service = self.get_chromadb_service(settings.CHROMA_QUERIES_COLLECTION)
         self.index = self.get_index()
-        self.docstore = self.index.storage_context.docstore
-        self.agent = FunctionAgent(
-            tools=[self.retrieve_documents],
-            llm=OpenAI(model='gpt-4o-mini'),
-            system_prompt=CHOOSE_VACANCY_PROMPT,
+        self.reranker = LLMRerank()
+        self.template = Environment(loader=FileSystemLoader('bot/templates')).get_template('tg_msg_vacancy.txt')
+        self.response_synthesizer = get_response_synthesizer(
+            response_mode='refine',
+            llm=OpenAI(model='gpt-5-nano'),
+            text_qa_template=PromptTemplate(CHOOSE_VACANCY_PROMPT),
             output_cls=HHAgentOutput,
         )
 
     def get_index(self):
-        storage = StorageContext.from_defaults()
-        storage.docstore.add_documents(self.documents)
-        index = VectorStoreIndex.from_documents(self.documents, storage_context=storage)
+        collection = get_chromadb_collection(settings.CHROMA_VACANCIES_COLLECTION)
+        vector_store = ChromaVectorStore(chroma_collection=collection)
+        storage = StorageContext.from_defaults(vector_store=vector_store)
+        index = VectorStoreIndex.from_vector_store(
+            vector_store, storage_context=storage, embed_model=OpenAIEmbedding(model=settings.CHROMA_EMBEDDING_MODEL)
+        )
         return index
 
     def get_chromadb_service(self, collection_name: str) -> ChromaService:
         collection = get_chromadb_collection(name=collection_name)
         return ChromaService(collection)
 
-    def retrieve_documents(self, query: str, sended_docs: list[int], nodes_k: int = 30, top_k_docs: int = 10):
-        retriever = self.index.as_retriever(similarity_top_k=nodes_k)
+    async def retrieve_documents(self, query: str, user_id: int, nodes_k: int = 20):
+        seen_docs = await self.bot.vacancy_service.get_list(models.Vacancy.user_id == user_id)
+        seen_ids = [item.id for item in seen_docs]
+        date_filter = int((datetime.now() - timedelta(days=1)).timestamp())
+        filters = MetadataFilters(
+            filters=[
+                MetadataFilter(key='published_at_ts', operator=FilterOperator.GTE, value=date_filter),
+                MetadataFilter(
+                    key='id',
+                    operator=FilterOperator.NIN,
+                    value=seen_ids,
+                ),
+            ]
+        )
+        retriever = self.index.as_retriever(similarity_top_k=nodes_k, similarity_cutoff=0.7, filters=filters)
         nodes = retriever.retrieve(query)
-        by_doc = defaultdict(list)
-        for n in nodes:
-            by_doc[n.node.ref_doc_id].append(n.score)
-        scored_doc_ids = sorted(
-            [(doc_id, sum(scores)) for doc_id, scores in by_doc.items() if doc_id not in sended_docs],
-            key=lambda x: x[1],
-            reverse=True,
-        )[:top_k_docs]
-        return [(self.docstore.get_document(doc_id), score) for doc_id, score in scored_doc_ids]
+        reranked_nodes = self.reranker.postprocess_nodes(nodes, query_str=query)
+        return self.response_synthesizer.synthesize(query=query, nodes=reranked_nodes)
 
-    def save_documents(self):
-        self.vacancies_service.upsert(
-            ids=self.doc_ids,
-            documents=[d.text for d in self.documents],
-            metadatas=[d.metadata for d in self.documents],
-        )
+    def save_documents(self) -> None:
+        if self.documents:
+            self.chroma_vacancies_service.upsert(
+                ids=self.doc_ids,
+                documents=[d.text for d in self.documents],
+                metadatas=[d.metadata for d in self.documents],
+            )
 
-    def update_queries(self, queries: GetResultProxy):
-        self.queries_service.upsert(
-            ids=queries['ids'],
-            documents=queries['documents'],
-            metadatas=queries['metadatas'],
-        )
+    async def update_vacancies(self, ids: list[str], user_id: int) -> None:
+        for id_ in ids:
+            try:
+                await self.bot.vacancy_service.add_item(id=int(id_), user_id=user_id, source='hh.ru')
+            except IntegrityError:
+                pass
 
     async def run(self):
         getresult = self.queries_service.get(include=['documents', 'metadatas'])
         queries = convert_from_get_result(getresult)
         for query in queries:
             user_id = query['metadatas']['user_id']
-            sended_ids = query['metadatas'].get('vacancies', [])
-            result = await self.agent.run(query['document'], sended_ids)
-            vacancies, ids = result.structured_response.get('vacancies', []), result.structured_response.get('ids', [])
-            if vacancies:
-                await self.bot.send_message(user_id, str(vacancies))
-            query['metadatas']['vacancies'] = [*sended_ids, *ids]
-
-        self.update_queries(convert_to_get_result(queries))
-        if self.documents:
-            self.save_documents()
+            result = await self.retrieve_documents(query['document'], user_id=user_id)
+            if result.response:
+                vacancies = result.response.model_dump()['vacancies']
+                text = self.template.render(vacancies=vacancies)
+                await self.bot.send_message(user_id, text)
+                logging.info(f'Sended HH vacancies to {user_id}')
+                await self.update_vacancies(ids=[v['id'] for v in vacancies], user_id=user_id)

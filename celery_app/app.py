@@ -8,4 +8,4 @@ from .tasks import poll_hh
 app = Celery()
 
 app.conf.update(broker_url=build_redis_uri())
-app.add_periodic_task(schedule=crontab(minute='*/3'), sig=poll_hh.s())
+app.add_periodic_task(schedule=crontab(minute='*/10'), sig=poll_hh.s())

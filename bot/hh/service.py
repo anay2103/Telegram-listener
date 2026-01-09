@@ -23,7 +23,7 @@ class HHService:
     async def get_vacancies(
         self,
         text: str = 'python developer',
-        period: int = 2,
+        period: int = 1,
         professional_role: int = 96,
         page: int = 0,
         per_page: int = 100,

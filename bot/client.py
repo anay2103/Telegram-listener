@@ -11,7 +11,7 @@ from telethon.tl import types
 
 from bot import settings
 from bot.openai.client import OpenAIClient
-from bot.service import ChannelService, CVService, SearchItemsService, UserService
+from bot.service import ChannelService, CVService, SearchItemsService, UserService, VacancyService
 
 
 class Client(OpenAIClient, TelegramClient):
@@ -33,6 +33,7 @@ class Client(OpenAIClient, TelegramClient):
         self.channel_service = ChannelService(self.sessionmaker)
         self.searchitems_service = SearchItemsService(self.sessionmaker)
         self.cv_service = CVService(self.sessionmaker)
+        self.vacancy_service = VacancyService(self.sessionmaker)
         super().__init__(**kwargs)
 
     def db_connect(self) -> None:
