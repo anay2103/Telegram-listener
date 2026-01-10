@@ -16,10 +16,10 @@ from llama_index.vector_stores.chroma import ChromaVectorStore
 from sqlalchemy.exc import IntegrityError
 
 from bot import models, settings
-from bot.chromadb import ChromaService
 from bot.chromadb.client import get_chromadb_collection
 from bot.chromadb.schemas import convert_from_get_result
 
+from ..chromadb.service import get_chromadb_service
 from .prompts import CHOOSE_VACANCY_PROMPT
 from .schemas import HHAgentOutput
 
@@ -34,13 +34,13 @@ class Agent:
         self.bot = bot
         self.documents = documents
         self.doc_ids = [d.doc_id for d in self.documents]
-        self.chroma_vacancies_service = self.get_chromadb_service(settings.CHROMA_VACANCIES_COLLECTION)
-        self.queries_service = self.get_chromadb_service(settings.CHROMA_QUERIES_COLLECTION)
+        self.chroma_vacancies_service = get_chromadb_service(settings.CHROMA_VACANCIES_COLLECTION)
+        self.queries_service = get_chromadb_service(settings.CHROMA_QUERIES_COLLECTION)
         self.index = self.get_index()
-        self.reranker = LLMRerank()
+        self.reranker = LLMRerank(top_n=5)
         self.template = Environment(loader=FileSystemLoader('bot/templates')).get_template('tg_msg_vacancy.txt')
         self.response_synthesizer = get_response_synthesizer(
-            response_mode='refine',
+            response_mode='compact',
             llm=OpenAI(model='gpt-5-nano'),
             text_qa_template=PromptTemplate(CHOOSE_VACANCY_PROMPT),
             output_cls=HHAgentOutput,
@@ -55,27 +55,27 @@ class Agent:
         )
         return index
 
-    def get_chromadb_service(self, collection_name: str) -> ChromaService:
-        collection = get_chromadb_collection(name=collection_name)
-        return ChromaService(collection)
-
     async def retrieve_documents(self, query: str, user_id: int, nodes_k: int = 20):
         seen_docs = await self.bot.vacancy_service.get_list(models.Vacancy.user_id == user_id)
-        seen_ids = [item.id for item in seen_docs]
-        date_filter = int((datetime.now() - timedelta(days=1)).timestamp())
-        filters = MetadataFilters(
-            filters=[
-                MetadataFilter(key='published_at_ts', operator=FilterOperator.GTE, value=date_filter),
+        seen_ids = [str(item.id) for item in seen_docs]
+        date_filter = int((datetime.now() - timedelta(days=2)).timestamp())
+        filters = [
+            MetadataFilter(key='published_at_ts', operator=FilterOperator.GTE, value=date_filter),
+        ]
+        if seen_ids:
+            filters.append(
                 MetadataFilter(
                     key='id',
                     operator=FilterOperator.NIN,
                     value=seen_ids,
-                ),
-            ]
+                )
+            )
+        retriever = self.index.as_retriever(
+            similarity_top_k=nodes_k, similarity_cutoff=0.7, filters=MetadataFilters(filters=filters)
         )
-        retriever = self.index.as_retriever(similarity_top_k=nodes_k, similarity_cutoff=0.7, filters=filters)
         nodes = retriever.retrieve(query)
         reranked_nodes = self.reranker.postprocess_nodes(nodes, query_str=query)
+        logger.info(f'Nodes returned by reranker {nodes}')
         return self.response_synthesizer.synthesize(query=query, nodes=reranked_nodes)
 
     def save_documents(self) -> None:
@@ -99,9 +99,12 @@ class Agent:
         for query in queries:
             user_id = query['metadatas']['user_id']
             result = await self.retrieve_documents(query['document'], user_id=user_id)
-            if result.response:
-                vacancies = result.response.model_dump()['vacancies']
-                text = self.template.render(vacancies=vacancies)
-                await self.bot.send_message(user_id, text)
-                logging.info(f'Sended HH vacancies to {user_id}')
-                await self.update_vacancies(ids=[v['id'] for v in vacancies], user_id=user_id)
+            if not result.response.vacancies:
+                logger.info('Empty response, continuing...')
+                continue
+            logger.info(f'Response source nodes {result.source_nodes}')
+            vacancies = result.response.model_dump()['vacancies']
+            text = self.template.render(vacancies=vacancies)
+            await self.bot.send_message(user_id, text)
+            logging.info(f'Sended HH vacancies to {user_id}')
+            await self.update_vacancies(ids=[v['id'] for v in vacancies], user_id=user_id)

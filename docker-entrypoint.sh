@@ -2,5 +2,5 @@
 
 set -e
 
-alembic upgrade head && python -m main
+alembic upgrade head
 exec "$@"

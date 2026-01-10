@@ -68,11 +68,9 @@ async def delete_old_vacancies():
     sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
 
     try:
-        # Вычисляем дату неделю назад
         week_ago = datetime.now() - timedelta(days=7)
 
         async with sessionmaker.begin() as session:
-            # Удаляем вакансии старше недели
             query = delete(models.Vacancy).where(models.Vacancy.created_at < week_ago)
             result = await session.execute(query)
             deleted_count = result.rowcount

@@ -1,6 +1,6 @@
 {% for vacancy in vacancies %}
 Название: {{vacancy.name}}
-Компания: {{vacancy.description}}
+Компания: {{vacancy.company}}
 Ссылка: {{vacancy.url}}
 {{vacancy.description}}
 {% endfor %}

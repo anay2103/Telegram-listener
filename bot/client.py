@@ -54,7 +54,7 @@ class Client(OpenAIClient, TelegramClient):
         """
         summary = await self.ai_request(message)
         match = await self.searchitems_service.get_searchitems(languages=summary.languages_lower, grades=summary.grades)
-        return set(match)
+        return set(m.user_id for m in match)
 
     async def send_message(
         self,
