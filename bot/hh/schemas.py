@@ -9,12 +9,6 @@ from pydantic import BaseModel, Field, field_serializer, field_validator
 template = Environment(loader=FileSystemLoader('bot/templates')).get_template('vacancy.txt')
 
 
-# class Document(BaseModel):
-#     id: str
-#     text: str
-#     metadata: dict[str, Any]
-
-
 class Vacancy(BaseModel):
     id: str
 
