@@ -15,3 +15,10 @@ class Languages(StrEnum):
 
     GOLANG = 'golang'
     PYTHON = 'python'
+
+
+class VacancySource(StrEnum):
+    """Источник вакансии."""
+
+    HH = 'hh.ru'
+    TG = 'telegram'

@@ -72,4 +72,10 @@ class SearchItemRepository(Repository):
 class CVRepository(Repository):
     """Репозиторий модели резюме."""
 
-    model = models.CV
+    model = models.Resume
+
+
+class VacancyRepository(Repository):
+    """Репозиторий модели вакансии."""
+
+    model = models.Vacancy

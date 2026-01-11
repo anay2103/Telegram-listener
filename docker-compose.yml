@@ -10,19 +10,88 @@ services:
         POSTGRES_PASSWORD: postgres
         POSTGRES_DB: bot
 
+    chroma:
+      image: ghcr.io/chroma-core/chroma:latest
+      restart: unless-stopped
+      volumes:
+        - chromadata:/chroma/.chroma/index
+      ports:
+        - "8000:8000"
+
+    redis:
+      image: redis:7.4-alpine
+      restart: unless-stopped
+      ports:
+        - "6379:6379"
+      volumes:
+        - redisdata:/data
+
     bot:
-      image: yanakarausheva/telegramlistener:latest
+      build: .
       env_file: .env
       restart: unless-stopped
       depends_on:
         - db
-
+        - chroma
+        - redis
       environment:
         POSTGRES_HOST: db
         POSTGRES_PORT: 5432
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
         POSTGRES_DB: bot
+        REDIS_HOST: redis
+        REDIS_PORT: 6379
+        REDIS_DB: 0
+        CHROMA_HOST: chroma
+        CHROMA_PORT: 8000
+      command: python -m main
+
+    worker:
+      build: .
+      restart: unless-stopped
+      depends_on:
+        - db
+        - redis
+        - chroma
+      environment:
+        POSTGRES_HOST: db
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_DB: bot
+        REDIS_HOST: redis
+        REDIS_PORT: 6379
+        REDIS_DB: 0
+        CHROMA_HOST: chroma
+        CHROMA_PORT: 8000
+      command: celery -A celery_app.app worker --loglevel=INFO --concurrency=1
+      volumes:
+        - .:/app
+
+    beat:
+      build: .
+      restart: unless-stopped
+      depends_on:
+        - db
+        - redis
+        - chroma
+      environment:
+        POSTGRES_HOST: db
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_DB: bot
+        REDIS_HOST: redis
+        REDIS_PORT: 6379
+        REDIS_DB: 0
+        CHROMA_HOST: chroma
+        CHROMA_PORT: 8000
+      command: celery -A celery_app.app beat --loglevel=INFO
+      volumes:
+        - .:/app
 
 volumes:
   pgdata:
+  chromadata:
+  redisdata:

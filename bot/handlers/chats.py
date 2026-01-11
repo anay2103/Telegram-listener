@@ -45,13 +45,13 @@ async def chat_listener(event: events.NewMessage.Event) -> None:
         logging.info('Got message %s for sending', message.text)
     else:
         logging.info('Got message %s, skipping', message.text)
-    for item in recipients:
+    for user_id in recipients:
         try:
-            await event.client.bot.send_message(item.user_id, message)
+            await event.client.bot.send_message(user_id, message)
         except errors.RPCError as err:
-            logging.error('Error sending to recipient %s: %s', item.user_id, err, exc_info=True)
+            logging.error('Error sending to recipient %s: %s', user_id, err, exc_info=True)
         else:
-            logging.info('Sended  to recipient %s', item.user_id)
+            logging.info('Sended  to recipient %s', user_id)
 
 
 @exception_handler

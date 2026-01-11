@@ -59,12 +59,23 @@ class Channel(TimeStampModel):
     language = sa.Column(ChoiceType(schemas.Languages), nullable=False)
 
 
-class CV(TimeStampModel):
+class Resume(TimeStampModel):
     """Модель резюме."""
 
-    __tablename__ = 'cv'
+    __tablename__ = 'resume'
 
     id = sa.Column(sa.BigInteger, primary_key=True, autoincrement=True)
     user_id = sa.Column(sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     name = sa.Column(sa.String(64), unique=True, nullable=False)
     content = sa.Column(FileField, nullable=False)
+
+
+class Vacancy(TimeStampModel):
+    """Модель вакансии."""
+
+    __tablename__ = 'vacancy'
+    __table_args__ = (sa.PrimaryKeyConstraint('id', 'user_id', 'source'),)
+
+    id = sa.Column(sa.BigInteger, nullable=False)
+    user_id = sa.Column(sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    source = sa.Column(ChoiceType(schemas.VacancySource), nullable=False)

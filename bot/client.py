@@ -6,11 +6,12 @@ from typing import Any, Coroutine, Optional
 from aiolimiter import AsyncLimiter
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from telethon import TelegramClient, hints
+from telethon.sessions import StringSession
 from telethon.tl import types
 
 from bot import settings
-from bot.openai import OpenAIClient
-from bot.service import ChannelService, CVService, SearchItemsService, UserService
+from bot.openai.client import OpenAIClient
+from bot.service import ChannelService, CVService, SearchItemsService, UserService, VacancyService
 
 
 class Client(OpenAIClient, TelegramClient):
@@ -32,6 +33,7 @@ class Client(OpenAIClient, TelegramClient):
         self.channel_service = ChannelService(self.sessionmaker)
         self.searchitems_service = SearchItemsService(self.sessionmaker)
         self.cv_service = CVService(self.sessionmaker)
+        self.vacancy_service = VacancyService(self.sessionmaker)
         super().__init__(**kwargs)
 
     def db_connect(self) -> None:
@@ -52,7 +54,7 @@ class Client(OpenAIClient, TelegramClient):
         """
         summary = await self.ai_request(message)
         match = await self.searchitems_service.get_searchitems(languages=summary.languages_lower, grades=summary.grades)
-        return set(match)
+        return set(m.user_id for m in match)
 
     async def send_message(
         self,
@@ -63,3 +65,21 @@ class Client(OpenAIClient, TelegramClient):
         """Отправка сообщений с учетом ограничений Телеграма."""
         async with self.limiter:
             return await super().send_message(entity, message, **kwargs)
+
+
+def get_tg_bot():
+    return Client(
+        session=settings.BOT_NAME,
+        api_id=settings.API_ID,
+        api_hash=settings.API_HASH,
+    )
+
+
+def get_tg_client():
+    bot = get_tg_bot()
+    return Client(
+        session=StringSession(settings.CLIENT_SESSION),
+        api_id=settings.API_ID,
+        api_hash=settings.API_HASH,
+        bot=bot,
+    )
