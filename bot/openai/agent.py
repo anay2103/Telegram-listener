@@ -99,7 +99,7 @@ class Agent:
         for query in queries:
             user_id = query['metadatas']['user_id']
             result = await self.retrieve_documents(query['document'], user_id=user_id)
-            if not result.response.vacancies:
+            if not hasattr(result.response, 'vacancies'):
                 logger.info('Empty response, continuing...')
                 continue
             logger.info(f'Response source nodes {result.source_nodes}')

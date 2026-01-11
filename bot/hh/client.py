@@ -32,6 +32,7 @@ class HHClient:
         self._client: httpx.AsyncClient = httpx.AsyncClient(
             base_url=self.base_url,
             timeout=self.timeout,
+            transport=httpx.AsyncHTTPTransport(retries=3),
             headers={'User-Agent': self.user_agent},
         )
 
